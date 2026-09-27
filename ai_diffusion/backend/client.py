@@ -78,6 +78,7 @@ class ClientMessage(NamedTuple):
     images: ImageCollection | None = None
     result: ClientOutput | None = None
     error: str | None = None
+    status: str = ""  # what the server is doing right now, for display (progress events)
 
 
 class User(QObject, ObservableProperties):

@@ -154,6 +154,7 @@ class DocumentModel(QObject, ObservableProperties):
     layer_count = Property(4, persist=True)
     progress_kind = Property(ProgressKind.generation)
     progress = Property(0.0)
+    progress_status = Property("")  # what the server is working on, eg. "Step 12/30"
     error = Property(no_error)
 
     workspace_changed = pyqtSignal(Workspace)
@@ -172,6 +173,7 @@ class DocumentModel(QObject, ObservableProperties):
     layer_count_changed = pyqtSignal(int)
     progress_kind_changed = pyqtSignal(ProgressKind)
     progress_changed = pyqtSignal(float)
+    progress_status_changed = pyqtSignal(str)
     error_changed = pyqtSignal(Error)
     modified = pyqtSignal(QObject, str)
 
@@ -769,14 +771,17 @@ class DocumentModel(QObject, ObservableProperties):
             self.jobs.notify_started(job)
             self.progress = -1
             self.progress_changed.emit(-1)
+            self.progress_status = _("Waiting for server")
         elif message.event is ClientEvent.progress:
             self.jobs.notify_started(job)
             self.progress_kind = ProgressKind.generation
             self.progress = message.progress
+            self.progress_status = message.status or _("Generating")
         elif message.event is ClientEvent.upload:
             self.jobs.notify_started(job)
             self.progress_kind = ProgressKind.upload
             self.progress = message.progress
+            self.progress_status = _("Uploading")
         elif message.event is ClientEvent.output:
             self.custom.handle_output(job, message.result)
         elif message.event is ClientEvent.finished:
@@ -803,6 +808,7 @@ class DocumentModel(QObject, ObservableProperties):
     def _finish_job(self, job: Job, event: ClientEvent):
         if job.kind is JobKind.upscaling:
             self.upscale.set_in_progress(False)
+        self.progress_status = ""
 
         if event is ClientEvent.finished:
             self.jobs.notify_finished(job)

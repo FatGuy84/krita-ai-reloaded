@@ -5,7 +5,7 @@ import json
 import struct
 import uuid
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from itertools import product
 from time import time
@@ -53,6 +53,7 @@ from .resources import (
     resource_id,
 )
 from .workflow import create as create_workflow
+from .workflow import dlss5_node
 
 if platform_tools.is_macos:
     import os
@@ -67,6 +68,7 @@ class JobInfo:
     work: WorkflowInput
     node_count: int = 0
     sample_count: int = 0
+    node_types: dict[str, str] = field(default_factory=dict)  # node id -> class_type
 
     def __str__(self):
         return f"Job[id={self.id}]"
@@ -113,9 +115,14 @@ class Progress:
     _nodes = 0
     _samples = 0
     _info: JobInfo
+    _node_type = ""
+    _dlss5_done = 0
+    status = ""
 
     def __init__(self, job_info: JobInfo):
         self._info = job_info
+        types = job_info.node_types.values()
+        self._dlss5_total = sum(1 for t in types if t == dlss5_node)
 
     def handle(self, msg: dict):
         id = msg["data"].get("prompt_id", None)
@@ -123,10 +130,29 @@ class Progress:
             return
         if msg["type"] == "executing":
             self._nodes += 1
+            self._node_type = self._info.node_types.get(str(msg["data"].get("node")), "")
+            self.status = self._node_status()
         elif msg["type"] == "execution_cached":
             self._nodes += len(msg["data"]["nodes"])
         elif msg["type"] == "progress":
             self._samples += 1
+            data = msg["data"]
+            if self._node_type != dlss5_node and "value" in data and "max" in data:
+                self.status = _("Step") + f" {data['value']}/{data['max']}"
+
+    def _node_status(self):
+        if self._node_type == dlss5_node:
+            self._dlss5_done += 1
+            if self._dlss5_total > 1:
+                return _("DLSS5 Enhance: pass {current} of {total}").format(
+                    current=self._dlss5_done, total=self._dlss5_total
+                )
+            return _("DLSS5 Enhance")
+        if "Loader" in self._node_type:
+            return _("Loading models")
+        if self._node_type in ("VAEDecode", "VAEDecodeTiled"):
+            return _("Decoding image")
+        return self.status  # keep the last meaningful status for small helper nodes
 
     @property
     def value(self):
@@ -236,6 +262,7 @@ class ComfyClient(Client):
 
     def _model_cache_path(self):
         import hashlib
+
         url_hash = hashlib.md5(self.url.encode()).hexdigest()[:8]
         return util.user_data_dir / f"model_cache_{url_hash}.json"
 
@@ -265,7 +292,9 @@ class ComfyClient(Client):
         else:
             nodes = self.models.node_inputs
 
-        cached_checkpoints, cached_diffusion = self._load_model_cache() if not refresh else (None, None)
+        cached_checkpoints, cached_diffusion = (
+            self._load_model_cache() if not refresh else (None, None)
+        )
 
         if cached_checkpoints is not None and not refresh:
             log.info("Loading models from cache (use Refresh to update)")
@@ -352,6 +381,7 @@ class ComfyClient(Client):
 
         job.node_count = workflow.node_count
         job.sample_count = workflow.sample_count
+        job.node_types = {id: node["class_type"] for id, node in workflow.root.items()}
         data = {
             "prompt": workflow.root,
             "client_id": self._id,
@@ -442,7 +472,10 @@ class ComfyClient(Client):
                     if self._active_job is not None and progress is not None:
                         progress.handle(msg)
                         await self._report(
-                            ClientEvent.progress, self._active_job.id, progress.value
+                            ClientEvent.progress,
+                            self._active_job.id,
+                            progress.value,
+                            status=progress.status,
                         )
                     else:
                         log.warning(f"Received message {msg} but there is no active job")

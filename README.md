@@ -501,8 +501,14 @@ much faster.
   changes and soft edges stay soft.
 
   Images larger than DLSS 5 accepts (7680×4320) are enhanced in overlapping
-  tiles that are blended back together. Each tile restarts the DLSS worker,
-  so expect a few seconds per tile.
+  tiles. DLSS tone maps each tile on its own, so a downscaled pass over the
+  whole image first sets the overall look, every tile is colour matched to
+  it, and the seams are blended over 256 px. Each pass restarts the DLSS
+  worker, so expect a few seconds per tile.
+
+  While any generation runs, a status line under the progress bar shows
+  what the server is doing (DLSS5 pass 3 of 10, sampling step, loading
+  models …) and the elapsed time.
 * **Generation mode in metadata**: saved PNGs and the history tooltip now
   record *how* an image was made — Generate, Refine, Inpaint (Fill / Add
   Content / Remove Content / Replace Background / …), Upscale, etc. — not

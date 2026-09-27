@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from textwrap import wrap as wrap_text
 from typing import ClassVar, cast
 
@@ -1139,6 +1140,50 @@ class ProgressBar(QProgressBar):
             self.setValue(min(99, self.value() + 2))
 
 
+class ProgressStatus(QLabel):
+    """One line under the progress bar: what the server is doing and for how long.
+    Hidden while idle so it takes no space."""
+
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self._model = root.active_model
+        self._model_bindings: list[QMetaObject.Connection] = []
+        self._started = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(1000)
+        self._timer.timeout.connect(self._update_text)
+        self.setStyleSheet(f"font-style: italic; color: {theme.grey};")
+        self.setVisible(False)
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, model: DocumentModel):
+        if self._model != model:
+            Binding.disconnect_all(self._model_bindings)
+            self._model = model
+            self._model_bindings = [
+                model.progress_status_changed.connect(self._update_status),
+            ]
+            self._update_status(model.progress_status)
+
+    def _update_status(self, status: str):
+        if status and not self._timer.isActive():
+            self._started = time.monotonic()
+            self._timer.start()
+        elif not status:
+            self._timer.stop()
+        self.setVisible(bool(status))
+        self._update_text()
+
+    def _update_text(self):
+        status = self._model.progress_status
+        elapsed = int(time.monotonic() - self._started)
+        theme.set_text_clipped(self, f"{status} · {elapsed // 60}:{elapsed % 60:02d}")
+
+
 class GenerationWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -1234,6 +1279,8 @@ class GenerationWidget(QWidget):
 
         self.progress_bar = ProgressBar(self)
         layout.addWidget(self.progress_bar)
+        self.progress_status = ProgressStatus(self)
+        layout.addWidget(self.progress_status)
 
         self.error_box = ErrorBox(self)
         layout.addWidget(self.error_box)
@@ -1351,6 +1398,7 @@ class GenerationWidget(QWidget):
             self.generate_button.model = model
             self.queue_button.model = model
             self.progress_bar.model = model
+            self.progress_status.model = model
             self.strength_slider.model = model
             self.history.model_ = model
             self.update_generate_options()
