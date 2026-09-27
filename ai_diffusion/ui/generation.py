@@ -1332,6 +1332,8 @@ class GenerationWidget(QWidget):
                 model.inpaint.mode_changed.connect(self.update_generate_options),
                 model.strength_changed.connect(self.update_generate_options),
                 model.document.selection_bounds_changed.connect(self.update_generate_options),
+                # DLSS5 availability (and with it the arrow menu) depends on server nodes
+                root.connection.models_changed.connect(self.update_generate_options),
                 model.document.layers.active_changed.connect(self.update_generate_options),
                 model.regions.active_changed.connect(self.update_generate_options),
                 model.region_only_changed.connect(self.update_generate_options),
@@ -1469,6 +1471,7 @@ class GenerationWidget(QWidget):
                 menu.actions()[-2].setEnabled(self.model.can_edit)
             else:
                 menu = self.generate_menu
+                menu.actions()[1].setEnabled(self.model.can_edit)
         else:
             if self.model.region_only:
                 menu = self.refine_region_menu
@@ -1526,7 +1529,9 @@ class GenerationWidget(QWidget):
         self.region_mask_button.setIcon(_region_mask_button_icons[is_region_only])
 
         if self.model.document.selection_bounds is None and not is_region_only:
-            self.inpaint_mode_button.setVisible(self.model.can_toggle_edit)
+            # the menu also holds DLSS5 Enhance Canvas, which needs no selection
+            has_menu = self.model.can_toggle_edit or self.model.dlss5_available
+            self.inpaint_mode_button.setVisible(has_menu)
             self.custom_inpaint.setVisible(False)
             if is_edit:
                 icon = "edit"
