@@ -1322,10 +1322,13 @@ dlss5_node = "DLSS5EnhanceImages"  # optional node pack: Blueforcer/ComfyUI-DLSS
 dlss5_max_extent = Extent(7680, 4320)  # node pack refuses larger output (long x short edge)
 # Tiles for images over that limit. TileLayout tiles are between one and two times the
 # minimum size per side; with 256 px padding, 2672 is the largest minimum that keeps every
-# side <= 4320 (so fewest tiles, each tile restarts the DLSS worker). The seams are blended
-# over the full padding, the widest the tile merge node allows.
+# side <= 4320 (so fewest tiles, each tile restarts the DLSS worker). The overlap gives
+# DLSS context at tile edges. The seam blend is narrower: the merge node box-blurs its
+# mask on the CPU at quadratic cost (8 tiles of 9 MP: 64 px 18 s, 128 px 77 s, 256 px
+# ~300 s), and the colour match below already removes the tone steps between tiles.
 dlss5_tile_size = 2672
 dlss5_tile_padding = 256
+dlss5_tile_blending = 64
 dlss5_guide_size = 2048  # long edge of the whole-image pass tiles are colour matched to
 
 
@@ -1379,32 +1382,28 @@ def _dlss5_tiled(w: ComfyWorkflow, original: Output, extent: Extent, enhance):
     # DLSS5 tone maps every tile on its own, so neighbouring tiles come out with
     # different brightness and colour, and blending alone leaves visible bands. A
     # downscaled pass over the whole image serves as the reference for the overall
-    # look: each tile is colour matched to its part of it before merging.
-    m = resolution.diffusion_multiple
-    padded_extent = extent.multiple_of(m)  # the tile nodes need a multiple of m
-    padded = original
-    if padded_extent != extent:
-        right, bottom = padded_extent.width - extent.width, padded_extent.height - extent.height
-        pad_args = dict(left=0, top=0, right=right, bottom=bottom, feathering=0)
-        padded = w.add("ImagePadForOutpaint", 2, image=original, **pad_args)[0]
-
-    guide_extent = padded_extent.scale_keep_aspect(Extent(dlss5_guide_size, dlss5_guide_size))
+    # look: each tile is colour matched to its part of it before merging. The guide
+    # stays small and is cropped per tile (the match only compares colour statistics):
+    # canvases this large exceed the 16384 px limit of core nodes like ImageScale.
+    guide_extent = extent.scale_keep_aspect(Extent(dlss5_guide_size, dlss5_guide_size))
     guide_extent = guide_extent.multiple_of(2)
-    guide = enhance(w.scale_image(padded, guide_extent), guide_extent)
-    guide = w.scale_image(guide, padded_extent)
+    guide = enhance(w.scale_image(original, guide_extent), guide_extent)
+    guide_scale = guide_extent.width / extent.width
 
-    # One DLSS5 node per tile rather than one batch: a batch is treated as video
-    # frames, and temporal accumulation would bleed neighbouring tiles into each other.
-    layout = TileLayout(padded_extent, dlss5_tile_size, dlss5_tile_padding, m)
-    tiles = w.create_tile_layout(padded, layout.min_size, layout.padding, layout.padding, m)
-    img = padded
+    # Multiple 1: the tile nodes require the image to be divisible by it, and padding or
+    # cropping a canvas over 16384 px isn't possible with core nodes. Odd tile sizes are
+    # handled by enhance(). One DLSS5 node per tile rather than one batch: a batch is
+    # treated as video frames, and temporal accumulation would bleed tiles into each other.
+    layout = TileLayout(extent, dlss5_tile_size, dlss5_tile_padding, 1)
+    blending = dlss5_tile_blending
+    tiles = w.create_tile_layout(original, layout.min_size, layout.padding, blending, 1)
+    img = original
     for i in range(layout.total_tiles):
-        tile = enhance(w.extract_image_tile(padded, tiles, i), layout.bounds(i).extent)
-        tile = w.color_match(tile, w.extract_image_tile(guide, tiles, i))
+        bounds = layout.bounds(i)
+        tile = enhance(w.extract_image_tile(original, tiles, i), bounds.extent)
+        guide_bounds = Bounds.clamp(Bounds.scale(bounds, guide_scale), guide_extent)
+        tile = w.color_match(tile, w.crop_image(guide, guide_bounds))
         img = w.merge_image_tile(img, tiles, i, tile)
-
-    if padded_extent != extent:
-        img = w.crop_image(img, Bounds(0, 0, *extent))
     return img
 
 
