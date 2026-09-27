@@ -1193,6 +1193,7 @@ class GenerationWidget(QWidget):
         self.generate_region_menu = self._create_generate_region_menu()
         self.refine_region_menu = self._create_refine_region_menu()
         self.edit_menu = self._create_edit_menu()
+        self.dlss5_menu = self._create_dlss5_menu()
 
         self.region_mask_button = QToolButton(self)
         self.region_mask_button.setIcon(theme.icon("region-alpha"))
@@ -1446,6 +1447,20 @@ class GenerationWidget(QWidget):
         menu.addAction(self._mk_action(InpaintMode.custom, _("Edit (Custom)"), "inpaint-custom"))
         return menu
 
+    def _create_dlss5_menu(self):
+        menu = QMenu(self)
+        menu.setIcon(theme.icon("workspace-upscaling"))
+        for style in ("Cinematic", "Default", "Natural"):
+            # triggered passes its checked flag first, so it must not land in `s`
+            menu.addAction(_(style), lambda checked=False, s=style: self._dlss5_enhance(s))
+        return menu
+
+    def _dlss5_enhance(self, style: str):
+        if settings.dlss5_style != style:
+            settings.dlss5_style = style
+            settings.save()
+        self.model.enhance_canvas_dlss5(style)
+
     def show_inpaint_menu(self):
         width = self.generate_button.width() + self.inpaint_mode_button.width()
         pos = QPoint(0, self.generate_button.height())
@@ -1469,8 +1484,18 @@ class GenerationWidget(QWidget):
                 menu = self.refine_menu
                 menu.actions()[1].setEnabled(self.model.can_edit)
 
+        # Appended only for the duration of the popup: the mode menus above are indexed
+        # by position, and DLSS5 depends on the optional node pack on the server.
+        extra = []
+        if self.model.dlss5_available:
+            target = _("Selection") if self.model.document.selection_bounds else _("Canvas")
+            self.dlss5_menu.setTitle(_("DLSS5 Enhance") + f" ({target})")
+            extra = [menu.addSeparator(), menu.addMenu(self.dlss5_menu)]
+
         menu.setFixedWidth(width)
         menu.exec_(self.generate_button.mapToGlobal(pos))
+        for action in extra:
+            menu.removeAction(action)
 
     def change_inpaint_mode(self, mode: InpaintMode, is_edit: bool | None):
         self.model.inpaint.mode = mode

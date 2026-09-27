@@ -493,13 +493,13 @@ much faster.
   nodes, which need Windows and an RTX 30 series GPU or newer on the machine
   running ComfyUI.
 
-  The same works on the canvas: bind a shortcut to **"DLSS5 Enhance canvas /
-  selection"** (Settings → Configure Krita → Keyboard Shortcuts). Without a
-  selection it enhances the whole visible image; with one it enhances the
-  area around it and blends the result back in through the selection mask,
-  so only the selected part changes and soft edges stay soft. It uses the
-  look you last picked in the history menu (Natural until then) and works
-  from any workspace.
+  The same works on the canvas: the arrow menu next to Generate has a
+  **DLSS5 Enhance (Canvas / Selection)** submenu with the same three looks.
+  Without a selection it enhances the whole visible image; with one it
+  enhances the area around it and blends the result back in through the
+  selection mask, so only the selected part changes and soft edges stay
+  soft. There is also a bindable Krita action, "DLSS5 Enhance canvas /
+  selection", which reuses the look you picked last.
 * **Generation mode in metadata**: saved PNGs and the history tooltip now
   record *how* an image was made — Generate, Refine, Inpaint (Fill / Add
   Content / Remove Content / Replace Background / …), Upscale, etc. — not
