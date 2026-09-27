@@ -1097,10 +1097,10 @@ class DocumentModel(QObject, ObservableProperties):
         new_job = self.jobs.add(JobKind.diffusion, params)
         eventloop.run(_report_errors(self, self._enqueue_job(new_job, input)))
 
-    def enhance_canvas_dlss5(self, style: str):
-        """The visible image, or the area around the selection with the result blended
-        in through the selection mask, same as a custom graph with a Krita Selection
-        node in "automatic" context."""
+    def enhance_canvas_dlss5(self, style: str, use_selection: bool):
+        """The whole visible image, or the area around the selection with the result
+        blended in through the selection mask, same as a custom graph with a Krita
+        Selection node in "automatic" context."""
         if not self.dlss5_available:
             self.report_error(_("DLSS5 Enhance nodes are not installed on the server"))
             return
@@ -1108,8 +1108,12 @@ class DocumentModel(QObject, ObservableProperties):
             self.clear_error()
             extent = self._doc.extent
             bounds = Bounds(0, 0, *extent)
-            mods = get_selection_modifiers(InpaintContext.automatic, InpaintMode.fill, 1.0)
-            mask, _selection = self._doc.create_mask_from_selection(mods)
+            mask = None
+            if use_selection:
+                mods = get_selection_modifiers(InpaintContext.automatic, InpaintMode.fill, 1.0)
+                mask, _selection = self._doc.create_mask_from_selection(mods)
+                if mask is None:
+                    raise ValueError(_("No selection on the canvas"))
             if mask is not None:
                 bounds = Bounds.clamp(mask.bounds, extent)
                 mask.bounds = mask.bounds.relative_to(bounds)

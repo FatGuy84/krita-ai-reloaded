@@ -663,6 +663,14 @@ class ActiveRegionWidget(QFrame):
         )
         self._describe_selection_action.setVisible(False)
         menu.addSeparator()
+        # Image, not prompt: runs the canvas through the optional DLSS5 node pack
+        self._dlss5_canvas_menu = self._create_dlss5_menu(_("DLSS5 Enhance canvas"), False)
+        self._dlss5_selection_menu = self._create_dlss5_menu(_("DLSS5 Enhance selection"), True)
+        self._dlss5_actions = [
+            menu.addMenu(self._dlss5_canvas_menu),
+            menu.addMenu(self._dlss5_selection_menu),
+            menu.addSeparator(),
+        ]
         menu.addAction(_("Modify with instruction..."), self._ask_instruction)
         menu.addAction(_("Prompt batch for generation..."), self._open_prompt_batch)
         menu.addSeparator()
@@ -677,6 +685,21 @@ class ActiveRegionWidget(QFrame):
         model = root.active_model
         has_canvas_selection = model is not None and model.document.selection_bounds is not None
         self._describe_selection_action.setVisible(has_canvas_selection)
+        has_dlss5 = model is not None and model.dlss5_available
+        for action in self._dlss5_actions:
+            action.setVisible(has_dlss5)
+        ensure(self._dlss5_actions[1]).setVisible(has_dlss5 and has_canvas_selection)
+
+    def _create_dlss5_menu(self, title: str, use_selection: bool):
+        menu = QMenu(title, self)
+        menu.setIcon(theme.icon("workspace-upscaling"))
+        for style in ("Cinematic", "Default", "Natural"):
+            menu.addAction(_(style), partial(self._dlss5_enhance, style, use_selection))
+        return menu
+
+    def _dlss5_enhance(self, style: str, use_selection: bool):
+        if model := root.active_model:
+            model.enhance_canvas_dlss5(style, use_selection)
 
     def _update_enhance_tooltip(self):
         model = settings.ollama_model or _("not configured")
