@@ -499,6 +499,10 @@ much faster.
   The selection variant enhances the area around the selection and blends
   the result back in through the selection mask, so only the selected part
   changes and soft edges stay soft.
+
+  Images larger than DLSS 5 accepts (7680×4320) are enhanced in overlapping
+  tiles that are blended back together. Each tile restarts the DLSS worker,
+  so expect a few seconds per tile.
 * **Generation mode in metadata**: saved PNGs and the history tooltip now
   record *how* an image was made — Generate, Refine, Inpaint (Fill / Add
   Content / Remove Content / Replace Background / …), Upscale, etc. — not

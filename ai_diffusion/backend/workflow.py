@@ -1319,6 +1319,17 @@ def upscale_simple(w: ComfyWorkflow, image: Image, model: str, factor: float):
 
 
 dlss5_node = "DLSS5EnhanceImages"  # optional node pack: Blueforcer/ComfyUI-DLSS5-Enhancer
+dlss5_max_extent = Extent(7680, 4320)  # node pack refuses larger output (long x short edge)
+# Tiles for images over that limit. TileLayout tiles are between one and two times the
+# minimum size per side; 2288 is the largest minimum that keeps every side <= 4320 (so
+# fewest tiles, each tile restarts the DLSS worker). Padding gives a seam to blend.
+dlss5_tile_size = 2288
+dlss5_tile_padding = 64
+
+
+def _dlss5_fits(extent: Extent):
+    long, short = max(extent.width, extent.height), min(extent.width, extent.height)
+    return long <= dlss5_max_extent.width and short <= dlss5_max_extent.height
 
 
 def dlss5_enhance(w: ComfyWorkflow, images: ImageInput, params: Dlss5Input):
@@ -1342,8 +1353,27 @@ def dlss5_enhance(w: ComfyWorkflow, images: ImageInput, params: Dlss5Input):
         warmup_frames=0,
         runtime_dir="",
     )
-    original = w.load_image(ensure(images.initial_image))
-    img = w.add(dlss5_node, 1, images=original, settings=settings, verify_neural_rendering=True)
+
+    def enhance(image: Output, extent: Extent):
+        result = w.add(dlss5_node, 1, images=image, settings=settings, verify_neural_rendering=True)
+        if extent.width % 2 or extent.height % 2:  # DLSS rounds odd sizes up to even
+            result = w.scale_image(result, extent)
+        return result
+
+    image = ensure(images.initial_image)
+    original = w.load_image(image)
+    if _dlss5_fits(image.extent):
+        img = enhance(original, image.extent)
+    else:
+        # One DLSS5 node per tile rather than one batch: a batch is treated as video
+        # frames, and temporal accumulation would bleed neighbouring tiles into each other.
+        m = resolution.diffusion_multiple
+        layout = TileLayout(image.extent, dlss5_tile_size, dlss5_tile_padding, m)
+        tiles = w.create_tile_layout(original, layout.min_size, layout.padding, layout.blending, m)
+        img = original
+        for i in range(layout.total_tiles):
+            tile = w.extract_image_tile(original, tiles, i)
+            img = w.merge_image_tile(img, tiles, i, enhance(tile, layout.bounds(i).extent))
     if images.hires_mask:  # selection: keep everything outside it as it was
         mask = w.load_mask(images.hires_mask)
         img = w.composite_image_masked(img, original, mask)
