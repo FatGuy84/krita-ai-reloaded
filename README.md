@@ -492,6 +492,14 @@ much faster.
   [ComfyUI-DLSS5-Enhancer](https://github.com/Blueforcer/ComfyUI-DLSS5-Enhancer)
   nodes, which need Windows and an RTX 30 series GPU or newer on the machine
   running ComfyUI.
+
+  The same works on the canvas: bind a shortcut to **"DLSS5 Enhance canvas /
+  selection"** (Settings → Configure Krita → Keyboard Shortcuts). Without a
+  selection it enhances the whole visible image; with one it enhances the
+  area around it and blends the result back in through the selection mask,
+  so only the selected part changes and soft edges stay soft. It uses the
+  look you last picked in the history menu (Natural until then) and works
+  from any workspace.
 * **Generation mode in metadata**: saved PNGs and the history tooltip now
   record *how* an image was made — Generate, Refine, Inpaint (Fill / Add
   Content / Remove Content / Replace Background / …), Upscale, etc. — not

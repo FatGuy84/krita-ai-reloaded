@@ -867,6 +867,9 @@ class HistoryWidget(QListWidget):
 
     def _make_dlss5_enhancer(self, style: str):
         def enhance():
+            if settings.dlss5_style != style:  # remembered for the canvas action
+                settings.dlss5_style = style
+                settings.save()
             for item in self.selectedItems():
                 job_id, image_index = self.item_info(item)
                 self._model.enhance_result_dlss5(job_id, image_index or 0, style)

@@ -1,5 +1,6 @@
 from ..model.model import Workspace
 from ..model.root import root
+from ..settings import settings
 
 
 def generate():
@@ -70,6 +71,11 @@ def toggle_workspace():
         l = list(Workspace)
         next = l[(l.index(model.workspace) + 1) % len(l)]
         model.workspace = next
+
+
+def dlss5_enhance():
+    if model := root.model_for_active_document():
+        model.enhance_canvas_dlss5(settings.dlss5_style)
 
 
 def toggle_edit_mode():

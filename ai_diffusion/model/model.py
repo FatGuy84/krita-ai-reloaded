@@ -1097,6 +1097,37 @@ class DocumentModel(QObject, ObservableProperties):
         new_job = self.jobs.add(JobKind.diffusion, params)
         eventloop.run(_report_errors(self, self._enqueue_job(new_job, input)))
 
+    def enhance_canvas_dlss5(self, style: str):
+        """The visible image, or the area around the selection with the result blended
+        in through the selection mask, same as a custom graph with a Krita Selection
+        node in "automatic" context."""
+        if not self.dlss5_available:
+            self.report_error(_("DLSS5 Enhance nodes are not installed on the server"))
+            return
+        try:
+            self.clear_error()
+            extent = self._doc.extent
+            bounds = Bounds(0, 0, *extent)
+            mods = get_selection_modifiers(InpaintContext.automatic, InpaintMode.fill, 1.0)
+            mask, _selection = self._doc.create_mask_from_selection(mods)
+            if mask is not None:
+                bounds = Bounds.clamp(mask.bounds, extent)
+                mask.bounds = mask.bounds.relative_to(bounds)
+            image = self._get_current_image(bounds)
+            mask_image = mask.to_image(bounds.extent) if mask else None
+            input = workflow.prepare_dlss5_enhance(image, style, mask_image)
+        except Exception as e:
+            self.report_error(util.log_error(e))
+            return
+
+        name = _("Selection") if mask else _("Canvas")
+        params = JobParams(bounds, f"[DLSS5] {name}", metadata={"dlss5_style": style})
+        params.has_mask = mask is not None
+        params.workflow_kind = WorkflowKind.dlss5_enhance
+        params.batch_id = uuid.uuid4().hex
+        job = self.jobs.add(JobKind.diffusion, params)
+        eventloop.run(_report_errors(self, self._enqueue_job(job, input)))
+
     def send_result_to_recipe(self, job_id: str, index: int):
         from ..backend.lora_manager import save_recipe
 
