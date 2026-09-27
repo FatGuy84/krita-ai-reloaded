@@ -493,9 +493,9 @@ much faster.
   nodes, which need Windows and an RTX 30 series GPU or newer on the machine
   running ComfyUI.
 
-  The same works on the canvas: the **AI** button's menu next to the prompt
-  has **DLSS5 Enhance canvas** (the whole visible image) and, while there is
-  a selection, **DLSS5 Enhance selection**, each with the same three looks.
+  The same works on the canvas: the arrow menu next to **Generate** ends
+  with **DLSS5 Enhance Canvas** (the whole visible image) and, while there is
+  a selection, **DLSS5 Enhance Selection**, each with the same three looks.
   The selection variant enhances the area around the selection and blends
   the result back in through the selection mask, so only the selected part
   changes and soft edges stay soft.
