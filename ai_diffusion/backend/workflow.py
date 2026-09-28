@@ -1409,13 +1409,25 @@ def _dlss5_tiled(w: ComfyWorkflow, original: Output, extent: Extent, enhance):
     layout = TileLayout(extent, dlss5_tile_size, dlss5_tile_padding, 1)
     blending = dlss5_tile_blending
     tiles = w.create_tile_layout(original, layout.min_size, layout.padding, blending, 1)
-    img = original
+    results = []
     for i in range(layout.total_tiles):
         bounds = layout.bounds(i)
         tile = enhance(w.extract_image_tile(original, tiles, i), bounds.extent)
         guide_bounds = Bounds.clamp(Bounds.scale(bounds, guide_scale), guide_extent)
         guide_tile = w.crop_image(guide, guide_bounds)
-        tile = _replace_low_frequencies(w, tile, guide_tile, bounds.extent)
+        results.append(_replace_low_frequencies(w, tile, guide_tile, bounds.extent))
+
+    # Merging blended tiles one after another onto the original leaks the original into
+    # every seam: two masks crossing at 0.5 leave it a weight of m * (1 - m), up to 25%.
+    # Invisible when tiles barely change the image (tiled upscale), but DLSS5 shifts the
+    # tone enough to show as light bands along the seams. So first lay the tiles down
+    # edge to edge without blending, then blend them over that: the leaked part is then
+    # a neighbouring tile, not the original. Measured exact to 1/255 on ComfyUI.
+    hard = w.create_tile_layout(original, layout.min_size, layout.padding, 0, 1)
+    img = original
+    for i, tile in enumerate(results):
+        img = w.merge_image_tile(img, hard, i, tile)
+    for i, tile in enumerate(results):
         img = w.merge_image_tile(img, tiles, i, tile)
     return img
 
