@@ -473,7 +473,14 @@ much faster.
   clicking through). Thumbnails are always regenerated from the
   full-resolution result, so they stay sharp at any size.
 * **Generation time** tracked per job and shown in its tooltip (wall-clock
-  from the first progress event to completion).
+  from the first progress event to completion). The tooltip also shows the
+  image size in pixels and how much space the result takes in the document
+  history.
+* **Large results are kept in the document**: results wider or taller than
+  WebP allows (16383 px) are stored as JPEG (PNG with transparency) instead
+  of being dropped, one failed store no longer stops all later results from
+  being saved, and a single result bigger than "Stored History Size" no
+  longer wipes the stored history.
 * **Save to Eagle**: if you use [Eagle](https://eagle.cool) to organize
   reference images, right-click a result → "Save to Eagle" sends it straight
   into your library via Eagle's local API, with the prompt as the item
