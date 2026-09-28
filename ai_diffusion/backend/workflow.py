@@ -1325,11 +1325,12 @@ dlss5_max_extent = Extent(7680, 4320)  # node pack refuses larger output (long x
 # side <= 4320 (so fewest tiles, each tile restarts the DLSS worker). The overlap gives
 # DLSS context at tile edges. The seam blend is narrower: the merge node box-blurs its
 # mask on the CPU at quadratic cost (8 tiles of 9 MP: 64 px 18 s, 128 px 77 s, 256 px
-# ~300 s), and the colour match below already removes the tone steps between tiles.
+# ~300 s), and taking the low frequencies from one guide removes the tone steps anyway.
 dlss5_tile_size = 2672
 dlss5_tile_padding = 256
 dlss5_tile_blending = 64
-dlss5_guide_size = 2048  # long edge of the whole-image pass tiles are colour matched to
+# Tones coarser than about 1/16 of a tile come from the guide, finer detail from the tile.
+dlss5_low_pass = 16
 
 
 def _dlss5_fits(extent: Extent):
@@ -1379,14 +1380,19 @@ def dlss5_enhance(w: ComfyWorkflow, images: ImageInput, params: Dlss5Input):
 
 
 def _dlss5_tiled(w: ComfyWorkflow, original: Output, extent: Extent, enhance):
-    # DLSS5 tone maps every tile on its own, so neighbouring tiles come out with
-    # different brightness and colour, and blending alone leaves visible bands. A
-    # downscaled pass over the whole image serves as the reference for the overall
-    # look: each tile is colour matched to its part of it before merging. The guide
-    # stays small and is cropped per tile (the match only compares colour statistics):
-    # canvases this large exceed the 16384 px limit of core nodes like ImageScale.
-    guide_extent = extent.scale_keep_aspect(Extent(dlss5_guide_size, dlss5_guide_size))
-    guide_extent = guide_extent.multiple_of(2)
+    # DLSS5 tone maps every tile on its own, and not uniformly within a tile either, so
+    # neighbouring tiles differ in brightness and colour along their seams. A whole-image
+    # pass at the largest size DLSS5 accepts is the guide for the overall look; every
+    # tile keeps only its fine detail and takes its low frequencies from the guide:
+    #   result = lowpass(guide) + tile - lowpass(tile)
+    # The guide is never scaled back to canvas size: core nodes cap sizes at 16384 px.
+    limit = dlss5_max_extent
+    if extent.height > extent.width:
+        limit = Extent(limit.height, limit.width)
+    guide_extent = extent.scale_keep_aspect(limit).multiple_of(2)
+    guide_extent = Extent(
+        min(guide_extent.width, limit.width), min(guide_extent.height, limit.height)
+    )
     guide = enhance(w.scale_image(original, guide_extent), guide_extent)
     guide_scale = guide_extent.width / extent.width
 
@@ -1402,9 +1408,37 @@ def _dlss5_tiled(w: ComfyWorkflow, original: Output, extent: Extent, enhance):
         bounds = layout.bounds(i)
         tile = enhance(w.extract_image_tile(original, tiles, i), bounds.extent)
         guide_bounds = Bounds.clamp(Bounds.scale(bounds, guide_scale), guide_extent)
-        tile = w.color_match(tile, w.crop_image(guide, guide_bounds))
+        guide_tile = w.crop_image(guide, guide_bounds)
+        tile = _replace_low_frequencies(w, tile, guide_tile, bounds.extent)
         img = w.merge_image_tile(img, tiles, i, tile)
     return img
+
+
+def _replace_low_frequencies(w: ComfyWorkflow, image: Output, source: Output, extent: Extent):
+    """clamp(lowpass(source) + image - lowpass(image)) with core nodes only. They all clamp
+    to [0, 1], so the signed detail is split into its positive and negative part:
+    max(a - b, 0) = 1 - clamp((1 - a) + b). Measured exact to 1/255 on ComfyUI."""
+    low = Extent(max(1, extent.width // dlss5_low_pass), max(1, extent.height // dlss5_low_pass))
+
+    def lowpass(x: Output):
+        x = w.add("ImageScale", 1, image=x, width=low.width, height=low.height,
+                  upscale_method="area", crop="disabled")  # fmt: skip
+        return w.add("ImageScale", 1, image=x, width=extent.width, height=extent.height,
+                     upscale_method="bilinear", crop="disabled")  # fmt: skip
+
+    opaque = w.add_cached("SolidMask", 1, value=0.0, width=1, height=1)  # mask 1 = transparent
+
+    def plus(a: Output, b: Output):
+        return w.add("PorterDuffImageComposite", 2, source=a, source_alpha=opaque,
+                     destination=b, destination_alpha=opaque, mode="ADD")[0]  # fmt: skip
+
+    def invert(x: Output):
+        return w.add("ImageInvert", 1, image=x)
+
+    image_low, source_low = lowpass(image), lowpass(source)
+    detail_pos = invert(plus(invert(image), image_low))  # max(image - low, 0)
+    detail_neg = invert(plus(invert(image_low), image))  # max(low - image, 0)
+    return invert(plus(invert(plus(source_low, detail_pos)), detail_neg))
 
 
 def upscale_tiled(
