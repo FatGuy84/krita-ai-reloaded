@@ -507,6 +507,11 @@ much faster.
   that pass, which removes the tone steps at the seams. Tiles overlap by
   256 px. Each pass restarts the DLSS worker, so expect a few seconds per
   tile. This also works for canvases wider than 16384 px.
+
+  The settings a result was made with are kept with it: the history entry
+  and layer are named like `[DLSS5 Natural, M, 1.0, 18 tiles]`, and saved
+  images, Eagle exports and "Info to Clipboard" record area, style,
+  intensity, tone, structure, skin, model preset and tile count.
 * **Generation status line**: while a job runs, a line under the progress
   bar says what the server is doing — sampling step 12/30, loading models,
   decoding, DLSS5 pass 3 of 10 — and for how long. Hidden while idle.

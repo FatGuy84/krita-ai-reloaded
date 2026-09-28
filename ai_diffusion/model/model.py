@@ -6,7 +6,7 @@ import uuid
 import weakref
 from collections import deque
 from copy import copy
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -1096,8 +1096,8 @@ class DocumentModel(QObject, ObservableProperties):
         # Same bounds, prompt and metadata as the source image so it applies to the
         # same place and keeps its info, but its own batch in the history.
         params = copy(job.params)
-        params.name = f"[DLSS5] {job.params.name}"
-        params.metadata = job.params.metadata | {"dlss5_style": style}
+        params.metadata = job.params.metadata | _dlss5_metadata(input, "history")
+        params.name = f"{_dlss5_name_prefix(params.metadata)} {job.params.name}"
         params.workflow_kind = WorkflowKind.dlss5_enhance
         params.batch_id = uuid.uuid4().hex
         new_job = self.jobs.add(JobKind.diffusion, params)
@@ -1131,7 +1131,8 @@ class DocumentModel(QObject, ObservableProperties):
             return
 
         name = _("Selection") if mask else _("Canvas")
-        params = JobParams(bounds, f"[DLSS5] {name}", metadata={"dlss5_style": style})
+        metadata = _dlss5_metadata(input, "selection" if mask else "canvas")
+        params = JobParams(bounds, f"{_dlss5_name_prefix(metadata)} {name}", metadata=metadata)
         params.has_mask = mask is not None
         params.workflow_kind = WorkflowKind.dlss5_enhance
         params.batch_id = uuid.uuid4().hex
@@ -1788,6 +1789,22 @@ class AnimationWorkspace(QObject, ObservableProperties):
             bounds = Bounds(0, 0, *self._model.document.extent)
             image = layer.get_pixels(bounds)
             self.target_image_changed.emit(image)
+
+
+def _dlss5_metadata(input: WorkflowInput, area: str):
+    """The DLSS5 settings a result was made with, stored with the job so saved images,
+    Eagle exports and "Info to Clipboard" record them. `tiles` is 0 for a single pass."""
+    tiles = workflow.dlss5_tile_count(input.extent.input)
+    return {"dlss5": asdict(ensure(input.dlss5)) | {"area": area, "tiles": tiles}}
+
+
+def _dlss5_name_prefix(metadata: dict[str, Any]):
+    """Eg. "[DLSS5 Natural, M, 1.0, 18 tiles]" - history entry and layer name."""
+    d = metadata["dlss5"]
+    parts = [d["style"], d["model_preset"], str(d["intensity"])]
+    if d["tiles"]:
+        parts.append(_("{count} tiles").format(count=d["tiles"]))
+    return f"[DLSS5 {', '.join(parts)}]"
 
 
 def get_selection_modifiers(

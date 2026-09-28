@@ -1338,10 +1338,16 @@ def _dlss5_fits(extent: Extent):
     return long <= dlss5_max_extent.width and short <= dlss5_max_extent.height
 
 
+def dlss5_tile_count(extent: Extent):
+    """Number of tiles dlss5_enhance splits an image of this size into, 0 if none."""
+    if _dlss5_fits(extent):
+        return 0
+    return TileLayout(extent, dlss5_tile_size, dlss5_tile_padding, 1).total_tiles
+
+
 def dlss5_enhance(w: ComfyWorkflow, images: ImageInput, params: Dlss5Input):
     # Single still images: no motion vectors, DLAA at source resolution so the result
-    # lands exactly on the bounds of the image it was made from. Model preset M keeps
-    # the most skin and hair texture; the strengths are the node pack's defaults.
+    # lands exactly on the bounds of the image it was made from.
     settings = w.add(
         "DLSS5Settings",
         1,
@@ -1349,11 +1355,11 @@ def dlss5_enhance(w: ComfyWorkflow, images: ImageInput, params: Dlss5Input):
         nr_preset="Default",
         nr_style=params.style,
         nr_intensity=params.intensity,
-        local_tone_strength=1.0,
-        local_structure_strength=1.5,
-        skin_structure_strength=2.0,
+        local_tone_strength=params.tone,
+        local_structure_strength=params.structure,
+        skin_structure_strength=params.skin,
         automatic_mask=True,
-        dlss_model_preset="M",
+        dlss_model_preset=params.model_preset,
         motion="none",
         scene_change_threshold=0.24,
         warmup_frames=0,

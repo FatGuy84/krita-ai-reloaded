@@ -457,4 +457,22 @@ def create_img_metadata(params: JobParams):
         if context:
             lines[-1] += f", Context: {context}"
 
+    # Separate "DLSS5 x: y" keys, as A1111-style parsers split parameters on ", "
+    if isinstance(dlss5 := meta.get("dlss5"), dict):
+        for key, label in _dlss5_metadata_keys:
+            if key in dlss5:
+                lines[-1] += f", DLSS5 {label}: {dlss5[key]}"
+
     return "\n".join(lines)
+
+
+_dlss5_metadata_keys = [
+    ("area", "area"),
+    ("style", "style"),
+    ("intensity", "intensity"),
+    ("tone", "tone"),
+    ("structure", "structure"),
+    ("skin", "skin"),
+    ("model_preset", "model"),
+    ("tiles", "tiles"),
+]

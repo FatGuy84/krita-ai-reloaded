@@ -169,8 +169,14 @@ class UpscaleInput:
 
 @dataclass
 class Dlss5Input:
-    style: str = "Natural"  # DLSS5Settings nr_style: Default, Natural, Cinematic
+    # DLSS5Settings inputs. Model preset M keeps the most skin and hair texture; the
+    # strengths are the node pack's defaults.
+    style: str = "Natural"  # nr_style: Default, Natural, Cinematic
     intensity: float = 1.0
+    tone: float = 1.0  # local_tone_strength
+    structure: float = 1.5  # local_structure_strength
+    skin: float = 2.0  # skin_structure_strength
+    model_preset: str = "M"
 
 
 @dataclass
