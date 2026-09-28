@@ -276,7 +276,8 @@ class HistoryWidget(QListWidget):
     def _add_item(self, job: Job, item: QListWidgetItem, index=0):
         item.setData(Qt.ItemDataRole.UserRole, job.id)
         item.setData(Qt.ItemDataRole.UserRole + 1, index)
-        item.setData(Qt.ItemDataRole.ToolTipRole, self._job_info(job.params))
+        size = job.results[index].extent if index < len(job.results) else None
+        item.setData(Qt.ItemDataRole.ToolTipRole, self._job_info(job.params, size))
         self.addItem(item)
 
     _job_info_translations: ClassVar[dict[str, str]] = {
@@ -297,7 +298,7 @@ class HistoryWidget(QListWidget):
         "custom_inpaint": _("Custom Inpaint Settings"),
     }
 
-    def _job_info(self, params: JobParams):
+    def _job_info(self, params: JobParams, size: Extent | None = None):
         title = params.name if params.name != "" else "<no prompt>"
         if len(title) > 70:
             title = title[:66] + "..."
@@ -311,6 +312,8 @@ class HistoryWidget(QListWidget):
         ]
         if mode := create_mode_label(params):
             strings.append(_("Mode") + f": {mode}")
+        if size := size or params.bounds.extent:  # the result image, placed at the bounds
+            strings.append(_("Size") + f": {size.width} × {size.height} px")
         for key, value in params.metadata.items():
             if key not in self._job_info_translations:
                 continue
