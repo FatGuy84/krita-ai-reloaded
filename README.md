@@ -129,11 +129,64 @@ to spot instead of just producing a slightly-off image.
 
 The browser has two tabs. **Library** lists the files and edits them in place
 (create, rename, edit, save, delete - deleted files go to the system trash). **Generate** writes a new one with the local
-language model: name a category — hairstyles, hair colors, poses, outfits —
+language model ([Prompt AI](#prompt-ai)): name a category — hairstyles, hair colors, poses, outfits —
 and it produces a list of interchangeable options, which you can prune before
 saving. Entries are written in rounds rather than one call each, since an entry
 is only a few words and per-call model overhead would dominate. Saving switches
 to the Library tab with the new file selected, ready to edit.
+
+### Prompt AI
+
+An **AI** button next to the prompt rewrites it with a local language model
+through [Ollama](https://ollama.com). Everything runs on your machine: no
+account, no cloud service, nothing leaves your network. You need Ollama
+installed and at least one model pulled (`ollama pull ...`). Turn it on under
+**Settings → Prompt AI**, enter the server URL (default `127.0.0.1:11434`),
+press **Connect** and pick a model from the list.
+
+Clicking the button runs **Enhance**; the arrow next to it opens the rest:
+
+* **Enhance** / **Enhance selection** - improve the whole prompt, or only the
+  text selected in the prompt field
+* **Rewrite from scratch** - a new prompt for the same subject
+* **Add detail only** - keeps your wording and adds to it
+* **Variations as sequential wildcard** - writes several alternatives as one
+  `[[a|b|c]]` group (count set by **Variation Count** in the settings)
+* **Describe the image** / **Describe current selection** - captions the
+  canvas, or the selected area of it, as a prompt; needs a vision model
+* **Modify with instruction...** - a free-form change such as "make it night,
+  remove the hat"
+* **Prompt batch for generation...** - see below
+* **Revert** - steps back through earlier versions of the prompt
+
+LoRA tags `<lora:...>`, file wildcards `__name__` and wildcard groups `{a|b}`
+and `[[a|b]]` are taken out before the prompt goes to the model and put back
+afterwards, so the model cannot mangle or drop them.
+
+**Prompt Batch** builds a pool of different prompts before you generate, so a
+batch or Loop Generate doesn't repeat the same one. **Vary current prompt**
+varies what is already there; **Random for a theme** invents scenes from a
+short idea. Set the **Count**, then output the result as a **Sequential group
+`[[a|b|c]]`** in the prompt or as a **Wildcard file** in your `wildcards/`
+folder. **Set batch count** matches the batch to the number of prompts, and
+**Generate images when finished** starts right away. Writing wildcard lists
+by category lives in the [Wildcards](#file-based-wildcards) browser's
+**Generate** tab.
+
+The model is told how to write for the active style's base model: tag lists
+for SD 1.5, SD XL, Illustrious, Pony and Anima; natural language for Flux,
+Qwen, Z-Image, Krea 2 and others; edit instructions for Flux Kontext and
+Qwen Edit. A fourth profile, **Video (LTX / motion)**, is there to map a
+family to yourself. The profiles are in `presets/prompt_enhance.json`. To change them, copy that file to the
+settings folder (**Open Settings folder**) as `prompt_enhance.json`, edit it
+and press **Reload Profiles** - entries there replace the defaults per
+profile. A profile can also name its own `model`, and a `describe_model` for
+image description (`qwen2.5vl:7b` by default).
+
+If Ollama shares the GPU with ComfyUI, **Free Image Model First** unloads the
+diffusion models before each call, and **Keep Model Loaded** (0 by default)
+drops the language model again right after, so image generation gets its
+VRAM back.
 
 ### LoRA Browser
 
