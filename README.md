@@ -51,7 +51,7 @@ or [GitHub Sponsors](https://github.com/sponsors/FatGuy84) — and please consid
 | Browse | Batch | Organise |
 | --- | --- | --- |
 | **LoRA, Recipe, Style, Checkpoint and Wildcard pickers** with live search, previews and favorites | **Sequential `[[a\|b]]` wildcards**, Cartesian batches, up to 1000 per run, Loop Generate | **History** with search, favorites, 1–5 star ratings and filters, plus Save to Eagle |
-| **CivitAI and AnimaDex browsers** — search and download without leaving Krita | **Local prompt tools** via Ollama: enhance, batch prompts, generate wildcard files | **Faster startup** through disk-cached model lists, and DLSS5 Enhance on results |
+| **CivitAI and AnimaDex browsers** — search and download without leaving Krita | **Local prompt tools** via Ollama: enhance, batch prompts, generate wildcard files | **Faster startup** through disk-cached model lists, and DLSS5 Enhance on results, canvas or selection — tiled for any size |
 
 <br>
 
@@ -505,13 +505,11 @@ much faster.
   at the largest size DLSS accepts first sets the overall look: each tile
   keeps only its fine detail and takes brightness and colour gradients from
   that pass, which removes the tone steps at the seams. Tiles overlap by
-  256 px. Each pass restarts the DLSS worker,
-  so expect a few seconds per tile. This also works for canvases wider than
-  16384 px.
-
-  While any generation runs, a status line under the progress bar shows
-  what the server is doing (DLSS5 pass 3 of 10, sampling step, loading
-  models …) and the elapsed time.
+  256 px. Each pass restarts the DLSS worker, so expect a few seconds per
+  tile. This also works for canvases wider than 16384 px.
+* **Generation status line**: while a job runs, a line under the progress
+  bar says what the server is doing — sampling step 12/30, loading models,
+  decoding, DLSS5 pass 3 of 10 — and for how long. Hidden while idle.
 * **Generation mode in metadata**: saved PNGs and the history tooltip now
   record *how* an image was made — Generate, Refine, Inpaint (Fill / Add
   Content / Remove Content / Replace Background / …), Upscale, etc. — not
