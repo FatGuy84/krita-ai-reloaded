@@ -292,6 +292,7 @@ def extent_equal(a: QImage, b: QImage):
 
 
 _qt_supports_webp = None
+webp_max_dimension = 16383  # WEBP_MAX_DIMENSION in libwebp
 
 
 def qt_supports_webp():
@@ -613,6 +614,12 @@ class Image:
         # Compression takes time for large images and blocks the UI, might be worth to thread.
         if not qt_supports_webp():
             format = format.no_webp_fallback
+        elif format.extension == "webp" and max(self.width, self.height) > webp_max_dimension:
+            # libwebp can't encode larger images at all - eg. a DLSS5 result of a wide canvas
+            # would fail to be stored in the history. JPEG loses the alpha channel.
+            format = format.no_webp_fallback
+            if format is ImageFileFormat.jpeg and self._qimage.hasAlphaChannel():
+                format = ImageFileFormat.png
         format_str = format.extension
         quality = override_quality if override_quality is not None else format.quality
         writer = QImageWriter(buffer, QByteArray(format_str.encode("utf-8")))

@@ -252,15 +252,25 @@ class ModelSync:
     async def _save_result_images(
         self, job: Job, slot: int, prev_task: asyncio.Future | None = None
     ):
+        # Saves are chained so slots are written in order. A failed save must not break
+        # the chain: awaiting it re-raises its error, and every later result would be
+        # silently dropped from the stored history for the rest of the session.
         if prev_task is not None:
-            await prev_task
-        if settings.multi_threading:
-            loop = asyncio.get_running_loop()
-            image_data, image_offsets = await loop.run_in_executor(
-                None, job.results.to_bytes, settings.history_format
-            )
-        else:
-            image_data, image_offsets = job.results.to_bytes(settings.history_format)
+            try:
+                await prev_task
+            except Exception:
+                pass  # already logged by the task that failed
+        try:
+            if settings.multi_threading:
+                loop = asyncio.get_running_loop()
+                image_data, image_offsets = await loop.run_in_executor(
+                    None, job.results.to_bytes, settings.history_format
+                )
+            else:
+                image_data, image_offsets = job.results.to_bytes(settings.history_format)
+        except Exception as e:
+            log.exception(f"Failed to store result {job.params.name} in the document: {e}")
+            raise
 
         self._model.document.annotate(f"result{slot}.webp", image_data)
         self._history.append(
@@ -313,7 +323,9 @@ class ModelSync:
     def _prune(self):
         limit = settings.history_storage * 1024 * 1024
         used = self.memory_used
-        while used > limit and len(self._history) > 0:
+        # Never prune the newest result: one larger than the whole limit (eg. a DLSS5
+        # result of a huge canvas) would otherwise wipe all stored history, itself included.
+        while used > limit and len(self._history) > 1:
             slot = self._history.pop(0).slot
             self._model.document.remove_annotation(f"result{slot}.webp")
             used -= self._memory_used.pop(slot, 0)
