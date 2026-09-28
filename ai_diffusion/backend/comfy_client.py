@@ -156,6 +156,11 @@ class Progress:
 
     @property
     def value(self):
+        if self._dlss5_total > 0:
+            # No sampler steps; the DLSS5 passes take nearly all the time. Count the
+            # running pass as half done. (Its own progress messages are not sampler steps,
+            # counting them would jump the bar to 80% on the first one.)
+            return max(0.0, self._dlss5_done - 0.5) / self._dlss5_total
         # Add +1 to node count so progress doesn't go to 100% until images are received.
         node_part = self._nodes / (self._info.node_count + 1)
         sample_part = self._samples / max(self._info.sample_count, 1)
