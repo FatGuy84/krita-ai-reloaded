@@ -198,6 +198,7 @@ class ModelSync:
                 job.eagle = item.eagle
                 results = ImageCollection.from_bytes(images_bytes, item.offsets)
                 model.jobs.set_results(job, results)
+                model.jobs.notify_stored(job, images_bytes.size(), item.offsets)
                 model.jobs.notify_finished(job)
                 self._history.append(item)
                 self._memory_used[item.slot] = images_bytes.size()
@@ -287,6 +288,7 @@ class ModelSync:
             )
         )
         self._memory_used[slot] = image_data.size()
+        self._model.jobs.notify_stored(job, image_data.size(), image_offsets)
         self._prune()
         self._save()
 
@@ -304,6 +306,7 @@ class ModelSync:
                 image_data, history.offsets = job.results.to_bytes()
                 self._model.document.annotate(f"result{history.slot}.webp", image_data)
                 self._memory_used[history.slot] = image_data.size()
+                self._model.jobs.notify_stored(job, image_data.size(), history.offsets)
                 self._save()
 
     def _save_later(self):

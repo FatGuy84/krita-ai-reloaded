@@ -136,6 +136,7 @@ class Job:
     favorites: dict[int, bool]
     ratings: dict[int, int]
     eagle: dict[int, bool]
+    stored_sizes: dict[int, int]  # result index -> bytes it takes in the document history
     started_at: datetime | None
 
     def __init__(self, id: str | None, kind: JobKind, params: JobParams):
@@ -148,6 +149,7 @@ class Job:
         self.favorites = {}
         self.ratings = {}
         self.eagle = {}
+        self.stored_sizes = {}
         self.started_at = None
 
     def result_was_used(self, index: int):
@@ -179,6 +181,7 @@ class JobQueue(QObject):
     favorite_changed = pyqtSignal(Item)
     rating_changed = pyqtSignal(Item)
     eagle_changed = pyqtSignal(Item)
+    results_stored = pyqtSignal(Job)
 
     def __init__(self):
         super().__init__()
@@ -260,6 +263,13 @@ class JobQueue(QObject):
         # clicking the same rating again clears it
         job.ratings[index] = 0 if job.rating(index) == rating else rating
         self.rating_changed.emit(self.Item(job_id, index))
+
+    def notify_stored(self, job: Job, data_size: int, offsets: list[int]):
+        """Record how many bytes each result takes in the document, from the encoded
+        blob of all results and the offsets where each one starts."""
+        ends = [*offsets[1:], data_size]
+        job.stored_sizes = {i: end - start for i, (start, end) in enumerate(zip(offsets, ends))}
+        self.results_stored.emit(job)
 
     def notify_sent_to_eagle(self, job_id: str, index: int):
         job = ensure(self.find(job_id))

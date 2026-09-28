@@ -78,6 +78,12 @@ from .widget import (
 )
 
 
+def _format_bytes(size: int):
+    if size >= 1024 * 1024:
+        return f"{size / (1024 * 1024):.1f} MB"
+    return f"{size / 1024:.0f} KB"
+
+
 def _tint_image(image: Image, color: QColor) -> Image:
     """Recolor the opaque pixels of an icon-like image, keeping its alpha shape."""
     qimg = image._qimage.copy()
@@ -217,6 +223,7 @@ class HistoryWidget(QListWidget):
             jobs.favorite_changed.connect(self.update_image_thumbnail),
             jobs.rating_changed.connect(self.update_image_thumbnail),
             jobs.eagle_changed.connect(self.update_image_thumbnail),
+            jobs.results_stored.connect(self._update_stored_sizes),
         ]
         self.rebuild()
         self.update_selection()
@@ -276,9 +283,22 @@ class HistoryWidget(QListWidget):
     def _add_item(self, job: Job, item: QListWidgetItem, index=0):
         item.setData(Qt.ItemDataRole.UserRole, job.id)
         item.setData(Qt.ItemDataRole.UserRole + 1, index)
-        size = job.results[index].extent if index < len(job.results) else None
-        item.setData(Qt.ItemDataRole.ToolTipRole, self._job_info(job.params, size))
+        item.setData(Qt.ItemDataRole.ToolTipRole, self._item_tooltip(job, index))
         self.addItem(item)
+
+    def _item_tooltip(self, job: Job, index: int):
+        size = job.results[index].extent if index < len(job.results) else None
+        return self._job_info(job.params, size, job.stored_sizes.get(index))
+
+    def _update_stored_sizes(self, job: Job):
+        # Stored sizes arrive after the item was added, once the result is encoded.
+        for i in range(self.count()):
+            item = self.item(i)
+            if item and item.data(Qt.ItemDataRole.UserRole) == job.id:
+                if item.flags() != Qt.ItemFlag.NoItemFlags:  # not a batch header
+                    _, index = self.item_info(item)
+                    tooltip = self._item_tooltip(job, index or 0)
+                    item.setData(Qt.ItemDataRole.ToolTipRole, tooltip)
 
     _job_info_translations: ClassVar[dict[str, str]] = {
         "prompt": _("Prompt"),
@@ -298,7 +318,9 @@ class HistoryWidget(QListWidget):
         "custom_inpaint": _("Custom Inpaint Settings"),
     }
 
-    def _job_info(self, params: JobParams, size: Extent | None = None):
+    def _job_info(
+        self, params: JobParams, size: Extent | None = None, stored_bytes: int | None = None
+    ):
         title = params.name if params.name != "" else "<no prompt>"
         if len(title) > 70:
             title = title[:66] + "..."
@@ -314,6 +336,18 @@ class HistoryWidget(QListWidget):
             strings.append(_("Mode") + f": {mode}")
         if size := size or params.bounds.extent:  # the result image, placed at the bounds
             strings.append(_("Size") + f": {size.width} × {size.height} px")
+        if stored_bytes is not None:
+            strings.append(_("File Size (in document)") + f": {_format_bytes(stored_bytes)}")
+        if isinstance(dlss5 := params.metadata.get("dlss5"), dict):
+            parts = [str(dlss5.get("area", "")).capitalize(), str(dlss5.get("style", ""))]
+            for key, label in (("intensity", _("intensity")), ("tone", _("tone")),
+                               ("structure", _("structure")), ("skin", _("skin")),
+                               ("model_preset", _("model"))):  # fmt: skip
+                if key in dlss5:
+                    parts.append(f"{label} {dlss5[key]}")
+            if tiles := dlss5.get("tiles"):
+                parts.append(_("{count} tiles").format(count=tiles))
+            strings.append(wrap_text("DLSS5: " + ", ".join(parts), 80, subsequent_indent=" "))
         for key, value in params.metadata.items():
             if key not in self._job_info_translations:
                 continue
