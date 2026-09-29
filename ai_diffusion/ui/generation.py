@@ -429,6 +429,15 @@ class HistoryWidget(QListWidget):
             next_item = self.item(i + 1)
             if item and item.text() != "" and next_item and next_item.text() != "":
                 self.takeItem(i)
+        # The loop above only drops a header that is followed by another header, so the
+        # header of the last batch stayed behind as an empty row once its images were gone.
+        last = self.item(self.count() - 1)
+        if last and last.text() != "":
+            self.takeItem(self.count() - 1)
+            if last is self._current_header:
+                # the next result must open a new header, not join the removed one
+                self._current_header = None
+                self._last_job_params = None
 
     def update_selection(self):
         current = [self._item_data(i) for i in self.selectedItems()]
