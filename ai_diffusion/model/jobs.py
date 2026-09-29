@@ -295,6 +295,10 @@ class JobQueue(QObject):
         while self._memory_usage > settings.history_size and self._entries[0] != keep:
             self._discard_job(self._entries[0])
 
+    def discard_job(self, job_id: str):
+        if job := self.find(job_id):
+            self._discard_job(job)
+
     def discard(self, job_id: str, index: int):
         job = ensure(self.find(job_id))
         if len(job.results) <= 1 or job.kind is JobKind.animation:

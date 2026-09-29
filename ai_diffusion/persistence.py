@@ -189,20 +189,31 @@ class ModelSync:
                 _deserialize(region.control.emplace(), control_state)
 
         for result in state.get("history", []):
-            item = _HistoryResult.from_dict(result)
-            if images_bytes := _find_annotation(model.document, f"result{item.slot}.webp"):
-                job = model.jobs.add_job(Job(item.id, item.kind, item.params))
-                job.in_use = item.in_use
-                job.favorites = item.favorites
-                job.ratings = item.ratings
-                job.eagle = item.eagle
-                results = ImageCollection.from_bytes(images_bytes, item.offsets)
-                model.jobs.set_results(job, results)
-                model.jobs.notify_stored(job, images_bytes.size(), item.offsets)
-                model.jobs.notify_finished(job)
-                self._history.append(item)
-                self._memory_used[item.slot] = images_bytes.size()
-                self._slot_index = max(self._slot_index, item.slot + 1)
+            try:
+                self._load_result(model, result)
+            except Exception as e:
+                # One unreadable entry must not cost the rest of the history, and must not
+                # leave a job without images behind (it shows as a header nothing can remove).
+                log.exception(f"Failed to restore history result {result.get('id')}: {e}")
+
+    def _load_result(self, model: DocumentModel, result: dict[str, Any]):
+        item = _HistoryResult.from_dict(result)
+        # Never reuse the slot, even if the entry can't be restored.
+        self._slot_index = max(self._slot_index, item.slot + 1)
+        images_bytes = _find_annotation(model.document, f"result{item.slot}.webp")
+        if not images_bytes or not item.offsets:
+            return
+        results = ImageCollection.from_bytes(images_bytes, item.offsets)
+        job = model.jobs.add_job(Job(item.id, item.kind, item.params))
+        job.in_use = item.in_use
+        job.favorites = item.favorites
+        job.ratings = item.ratings
+        job.eagle = item.eagle
+        model.jobs.set_results(job, results)
+        model.jobs.notify_stored(job, images_bytes.size(), item.offsets)
+        model.jobs.notify_finished(job)
+        self._history.append(item)
+        self._memory_used[item.slot] = images_bytes.size()
 
     def _track(self, model: DocumentModel):
         model.modified.connect(self._save_later)

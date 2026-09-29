@@ -63,6 +63,7 @@ from ..model.root import root
 from ..settings import settings
 from ..text import create_mode_label
 from ..style import Styles
+from ..util import client_logger as log
 from ..util import ensure, flatten, sequence_equal
 from . import theme
 from .region import RegionPromptWidget
@@ -171,6 +172,7 @@ class HistoryWidget(QListWidget):
         self._rating_filter = 0
         self._current_header: QListWidgetItem | None = None
         self._collapsed_batches: set[str] = set()
+        self._active_header: QListWidgetItem | None = None  # last clicked batch header
 
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setResizeMode(QListView.Adjust)
@@ -241,6 +243,23 @@ class HistoryWidget(QListWidget):
         if not self.is_finished(job):
             return  # Only finished diffusion/animation jobs have images to show
 
+        # Thumbnails first: if a result can't be shown, the batch must not get a header
+        # on its own - it could never be selected, discarded or collapsed.
+        items: list[tuple[QListWidgetItem, int]] = []
+        try:
+            if job.kind is JobKind.diffusion:
+                count = min(len(job.results), 1) if job.params.is_layered else len(job.results)
+                for i in range(count):
+                    items.append((QListWidgetItem(self._image_thumbnail(job, i), None), i))
+            elif job.kind is JobKind.animation and len(job.results) > 0:
+                thumbs = [self._image_thumbnail(job, i) for i in range(len(job.results))]
+                items.append((AnimatedListItem(thumbs), 0))
+        except Exception as e:
+            log.exception(f"Failed to show history result {job.params.name}: {e}")
+            return
+        if len(items) == 0:
+            return
+
         scrollbar = self.verticalScrollBar()
         scroll_to_bottom = scrollbar and scrollbar.value() >= scrollbar.maximum() - 4
 
@@ -263,18 +282,8 @@ class HistoryWidget(QListWidget):
             group = self._current_header.data(Qt.ItemDataRole.UserRole + 2) or []
             self._current_header.setData(Qt.ItemDataRole.UserRole + 2, [*group, job.id])
 
-        if job.kind is JobKind.diffusion:
-            if job.params.is_layered:
-                self._add_item(job, QListWidgetItem(self._image_thumbnail(job, 0), None))
-            else:
-                for i, img in enumerate(job.results):
-                    self._add_item(job, QListWidgetItem(self._image_thumbnail(job, i), None), i)
-
-        if job.kind is JobKind.animation:
-            item = AnimatedListItem([
-                self._image_thumbnail(job, i) for i in range(len(job.results))
-            ])
-            self._add_item(job, item)
+        for item, index in items:
+            self._add_item(job, item, index)
 
         if scroll_to_bottom:
             self.scrollToBottom()
@@ -512,6 +521,7 @@ class HistoryWidget(QListWidget):
 
     def rebuild(self):
         self.clear()
+        self._active_header = None
         self._current_header = None
         self._last_job_params = None
         for job in filter(self.is_finished, self._model.jobs):
@@ -592,8 +602,9 @@ class HistoryWidget(QListWidget):
         for i in range(self.count()):
             item = ensure(self.item(i))
             if item.flags() == Qt.ItemFlag.NoItemFlags:
-                job_id = item.data(Qt.ItemDataRole.UserRole)
-                item.setHidden(not job_has_visible.get(job_id, False))
+                # any job of the batch counts, the first one may have been discarded
+                group = item.data(Qt.ItemDataRole.UserRole + 2) or []
+                item.setHidden(not any(job_has_visible.get(id, False) for id in group))
 
     def item_info(self, item: QListWidgetItem) -> tuple[str, int]:  # job id, image index
         return item.data(Qt.ItemDataRole.UserRole), item.data(Qt.ItemDataRole.UserRole + 1)
@@ -636,6 +647,10 @@ class HistoryWidget(QListWidget):
         self._apply_filter()
 
     def mousePressEvent(self, e: QMouseEvent | None):
+        if e is not None:  # headers can't be selected, remember the one Del should act on
+            clicked = self.itemAt(e.pos())
+            is_header = clicked is not None and clicked.flags() == Qt.ItemFlag.NoItemFlags
+            self._active_header = clicked if is_header else None
         if (  # make single click deselect current item (usually requires Ctrl+click)
             e is not None
             and e.button() == Qt.MouseButton.LeftButton
@@ -744,6 +759,8 @@ class HistoryWidget(QListWidget):
         label = _("Expand Batch") if key in self._collapsed_batches else _("Collapse Batch")
         menu.addAction(label, lambda: self._toggle_batch_collapse(header_item))
         menu.addAction(_("Select Batch"), lambda: self._select_batch(header_item))
+        menu.addSeparator()
+        menu.addAction(_("Discard Batch") + "\tDel", lambda: self._discard_batch(header_item))
         menu.exec(self.mapToGlobal(pos))
 
     def _show_context_menu(self, pos: QPoint):
@@ -971,12 +988,38 @@ class HistoryWidget(QListWidget):
             )
         if reply == QMessageBox.Yes:
             items = self.selectedItems()
+            if len(items) == 0 and self._active_header is not None:
+                self._discard_batch(self._active_header, confirm=False)
+                return
             next_item = self.row(items[0]) if len(items) > 0 else -1
             for item in items:
                 job_id, image_index = self.item_info(item)
                 self._model.jobs.discard(job_id, image_index)
             if next_item >= 0:
                 self.setCurrentRow(next_item, QItemSelectionModel.SelectionFlag.Current)
+
+    def _discard_batch(self, header_item: QListWidgetItem, confirm=True):
+        if confirm and settings.confirm_discard_image:
+            reply = QMessageBox.warning(
+                self,
+                _("Discard Batch"),
+                _("Are you sure you want to discard all images of this batch?"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.StandardButton.Yes,
+            )
+            if reply != QMessageBox.Yes:
+                return
+        self._active_header = None
+        for job_id in header_item.data(Qt.ItemDataRole.UserRole + 2) or []:
+            self._model.jobs.discard_job(job_id)
+        # Discarding the jobs usually takes the header along. One whose jobs are gone
+        # already, or never had an image to show, has to be removed here.
+        row = self.row(header_item)
+        if row >= 0:
+            self.takeItem(row)
+        if header_item is self._current_header:
+            self._current_header = None
+            self._last_job_params = None
 
     def _clear_all(self):
         reply = QMessageBox.warning(
@@ -989,6 +1032,10 @@ class HistoryWidget(QListWidget):
         if reply == QMessageBox.Yes:
             self._model.jobs.clear()
             self.clear()
+            # the headers are gone, the next result must not try to join one
+            self._current_header = None
+            self._last_job_params = None
+            self._active_header = None
             self._model.hide_preview(delete_layer=True)
 
 
