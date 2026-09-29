@@ -801,6 +801,9 @@ class ActiveRegionWidget(QFrame):
         else:
             source = original
 
+        # Like Generate: a new attempt replaces the last error instead of leaving it
+        # standing (and pushing the history down) after the problem is gone.
+        model.clear_error()
         self._enhance_running = True
         self._begin_enhance_progress(task)
         try:
