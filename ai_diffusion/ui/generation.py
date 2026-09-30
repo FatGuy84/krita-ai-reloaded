@@ -242,6 +242,8 @@ class HistoryWidget(QListWidget):
     def add(self, job: Job):
         if not self.is_finished(job):
             return  # Only finished diffusion/animation jobs have images to show
+        if any(self.item_info(ensure(self.item(i)))[0] == job.id for i in range(self.count())):
+            return  # already shown, a second copy would outlive the job's discard
 
         # Thumbnails first: if a result can't be shown, the batch must not get a header
         # on its own - it could never be selected, discarded or collapsed.
@@ -408,45 +410,70 @@ class HistoryWidget(QListWidget):
         self._remove_items(id.job, id.image)
 
     def _remove_items(self, job_id: str, image_index: int = -1):
-        def _job_id(item: QListWidgetItem | None):
-            return item.data(Qt.ItemDataRole.UserRole) if item else None
-
         item_was_selected = False
         with theme.SignalBlocker(self):
-            # Remove all the job's items before triggering potential selection changes
-            current = next((i for i in range(self.count()) if _job_id(self.item(i)) == job_id), -1)
-            if current >= 0:
-                item = self.item(current)
-                while item and _job_id(item) == job_id:
-                    _, index = self.item_info(item)
-                    if image_index == index or (index is not None and image_index == -1):
-                        item_was_selected = item_was_selected or item.isSelected()
-                        self.takeItem(current)
-                    else:
-                        if index and index > image_index:
-                            item.setData(Qt.ItemDataRole.UserRole + 1, index - 1)
-                        current += 1
-                    item = self.item(current)
+            # Remove all the job's items before triggering potential selection changes.
+            # The whole list is scanned: stopping at the first run of the job's items left
+            # any other copy behind, as a thumbnail that could never be selected or discarded.
+            for row in reversed(range(self.count())):
+                item = ensure(self.item(row))
+                if self._is_header(item) or item.data(Qt.ItemDataRole.UserRole) != job_id:
+                    continue
+                _, index = self.item_info(item)
+                if image_index == -1 or index == image_index:
+                    item_was_selected = item_was_selected or item.isSelected()
+                    self.takeItem(row)
+                elif index is not None and index > image_index:
+                    item.setData(Qt.ItemDataRole.UserRole + 1, index - 1)
+            item_was_selected = self._drop_orphans() or item_was_selected
 
         if item_was_selected:
             self._model.jobs.selection = []
         else:
             self.update_apply_button()  # selection may have moved
 
-        for i in range(self.count()):
-            item = self.item(i)
-            next_item = self.item(i + 1)
-            if item and item.text() != "" and next_item and next_item.text() != "":
-                self.takeItem(i)
-        # The loop above only drops a header that is followed by another header, so the
-        # header of the last batch stayed behind as an empty row once its images were gone.
-        last = self.item(self.count() - 1)
-        if last and last.text() != "":
-            self.takeItem(self.count() - 1)
-            if last is self._current_header:
+    def _is_header(self, item: QListWidgetItem):
+        return item.flags() == Qt.ItemFlag.NoItemFlags
+
+    def _remove_orphans(self):
+        with theme.SignalBlocker(self):
+            was_selected = self._drop_orphans()
+        if was_selected:
+            self._model.jobs.selection = [self._item_data(i) for i in self.selectedItems()]
+        self.update_apply_button()
+
+    def _drop_orphans(self) -> bool:
+        """Removes thumbnails whose result is no longer in the job queue, and batch headers
+        left without thumbnails. Returns True if a selected item was removed."""
+        results = {job.id: len(job.results) for job in self._model.jobs if self.is_finished(job)}
+        was_selected = False
+        shown: set[str] = set()
+        for row in reversed(range(self.count())):
+            item = ensure(self.item(row))
+            if self._is_header(item):
+                continue
+            job_id, index = self.item_info(item)
+            if (index or 0) < results.get(job_id, 0):
+                shown.add(job_id)
+            else:
+                was_selected = was_selected or item.isSelected()
+                self.takeItem(row)
+        for row in reversed(range(self.count())):
+            item = ensure(self.item(row))
+            if not self._is_header(item):
+                continue
+            group = [id for id in item.data(Qt.ItemDataRole.UserRole + 2) or [] if id in shown]
+            if len(group) > 0:
+                item.setData(Qt.ItemDataRole.UserRole + 2, group)
+                continue
+            self.takeItem(row)
+            if item is self._active_header:
+                self._active_header = None
+            if item is self._current_header:
                 # the next result must open a new header, not join the removed one
                 self._current_header = None
                 self._last_job_params = None
+        return was_selected
 
     def update_selection(self):
         current = [self._item_data(i) for i in self.selectedItems()]
@@ -506,7 +533,11 @@ class HistoryWidget(QListWidget):
             self._apply_filter()
 
     def select_item(self):
-        self._model.jobs.selection = [self._item_data(i) for i in self.selectedItems()]
+        selection = [self._item_data(i) for i in self.selectedItems()]
+        if not all(self._model.jobs.has_item(s) for s in selection):
+            self._remove_orphans()  # stale thumbnail, can't be previewed or applied
+            selection = [self._item_data(i) for i in self.selectedItems()]
+        self._model.jobs.selection = selection
 
     def _toggle_selection(self):
         self._model.jobs.toggle_selection()
@@ -994,7 +1025,11 @@ class HistoryWidget(QListWidget):
             next_item = self.row(items[0]) if len(items) > 0 else -1
             for item in items:
                 job_id, image_index = self.item_info(item)
-                self._model.jobs.discard(job_id, image_index)
+                if self._model.jobs.has_item(JobQueue.Item(job_id, image_index or 0)):
+                    self._model.jobs.discard(job_id, image_index or 0)
+            # a thumbnail whose result is already gone has nothing to discard in the queue,
+            # it only has to leave the list
+            self._remove_orphans()
             if next_item >= 0:
                 self.setCurrentRow(next_item, QItemSelectionModel.SelectionFlag.Current)
 

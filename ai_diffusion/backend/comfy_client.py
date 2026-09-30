@@ -461,14 +461,15 @@ class ComfyClient(Client):
                     if self._clear_job(job_id):
                         if len(images) == 0:
                             # It may happen if the entire execution is cached and no images are sent.
-                            images = last_images
+                            # A copy: discarding an image of one job must not remove it from the other.
+                            images = ImageCollection(last_images)
                         if len(images) == 0:
                             # Still no images. Potential scenario: execution cached, but previous
                             # generation happened before the client was connected.
                             err = "No new images were generated because the inputs did not change."
                             await self._report(ClientEvent.error, job_id, error=err)
                         else:
-                            last_images = images
+                            last_images = ImageCollection(images)
                             await self._report(
                                 ClientEvent.finished, job_id, 1, images=images, result=result
                             )
