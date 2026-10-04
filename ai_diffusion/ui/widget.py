@@ -84,6 +84,23 @@ from .autocomplete import PromptAutoComplete
 from .theme import SignalBlocker
 
 
+def wildcard_combination_count(model: DocumentModel) -> int:
+    """Number of sequential wildcard combinations in the active prompt (0 if none), capped at 1000."""
+    prompt = model.regions.active_or_root.positive
+    matches = list(pattern_seq_combined.finditer(prompt))
+    if not matches:
+        return 0
+    library = WildcardLibrary.instance()
+    product = 1
+    for match in matches:
+        if match.group(1) is not None:
+            count = len(match.group(1).split("|"))
+        else:
+            count = len(library.get(match.group(2)) or [])
+        product *= max(1, count)
+    return min(product, 1000)
+
+
 class QueuePopup(QMenu):
     _model: DocumentModel
     _connections: list[QMetaObject.Connection]
@@ -140,7 +157,9 @@ class QueuePopup(QMenu):
         self._batch_spinbox.setToolTip(_("Number of jobs to enqueue at once"))
         self._batch_combo_button = QToolButton(self)
         self._batch_combo_button.setIcon(theme.icon("combinations"))
-        self._batch_combo_button.setToolTip(_("Set batch count to the number of sequential wildcard combinations in the prompt"))
+        self._batch_combo_button.setToolTip(
+            _("Set batch count to the number of sequential wildcard combinations in the prompt")
+        )
         self._batch_combo_button.setVisible(supports_batch)
         self._batch_combo_button.clicked.connect(self._set_batch_from_combinations)
         batch_layout.addWidget(self._batch_slider)
@@ -282,20 +301,8 @@ class QueuePopup(QMenu):
         self.model.resolution_multiplier = value / 10
 
     def _set_batch_from_combinations(self):
-        prompt = self._model.regions.active_or_root.positive
-        matches = list(pattern_seq_combined.finditer(prompt))
-        if not matches:
-            return
-        library = WildcardLibrary.instance()
-        product = 1
-        for match in matches:
-            if match.group(1) is not None:
-                count = len(match.group(1).split("|"))
-            else:
-                count = len(library.get(match.group(2)) or [])
-            product *= max(1, count)
-        product = min(product, 1000)
-        self._model.batch_count = product
+        if count := wildcard_combination_count(self._model):
+            self._model.batch_count = count
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         if parent := cast(QWidget, self.parent()):

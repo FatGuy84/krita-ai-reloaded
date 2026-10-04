@@ -76,6 +76,7 @@ from .widget import (
     StyleSelectWidget,
     WorkspaceSelectWidget,
     create_wide_tool_button,
+    wildcard_combination_count,
 )
 
 
@@ -1399,9 +1400,20 @@ class GenerationWidget(QWidget):
             lambda on: self.loop_button.setIcon(self._loop_icon_active if on else self._loop_icon)
         )
 
+        self.combinations_button = QToolButton(self)
+        self.combinations_button.setIcon(theme.icon("combinations"))
+        self.combinations_button.setFixedHeight(self.generate_button.height() - 2)
+        self.combinations_button.setToolTip(
+            _(
+                "Set batch count to the number of sequential wildcard combinations in the prompt and generate"
+            )
+        )
+        self.combinations_button.clicked.connect(self._generate_combinations)
+
         actions_layout = QHBoxLayout()
         actions_layout.addLayout(generate_layout)
         actions_layout.addWidget(self.loop_button)
+        actions_layout.addWidget(self.combinations_button)
         actions_layout.addWidget(self.queue_button)
         layout.addLayout(actions_layout)
 
@@ -1530,6 +1542,11 @@ class GenerationWidget(QWidget):
             self.strength_slider.model = model
             self.history.model_ = model
             self.update_generate_options()
+
+    def _generate_combinations(self):
+        if count := wildcard_combination_count(self.model):
+            self.model.batch_count = count
+            self.model.generate()
 
     def apply_result(self, item: QListWidgetItem):
         job_id, index = self.history.item_info(item)
