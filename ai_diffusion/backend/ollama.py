@@ -27,6 +27,7 @@ class EnhanceTask(Enum):
     variations = "variations"
     instruct = "instruct"
     describe = "describe"
+    structure = "structure"
 
 
 _task_instructions = {
@@ -57,6 +58,10 @@ _task_instructions = {
         " Do not invent anything that is not in the image, do not mention that this is an"
         " image or a description, and answer with the prompt only.{instruction}"
     ),
+    EnhanceTask.structure: (
+        "Sort the following prompt into labelled sections. Keep every detail of the prompt,"
+        " add nothing and drop nothing."
+    ),
     EnhanceTask.variations: (
         "Write {count} different variations of the following prompt. Vary pose, setting,"
         " lighting and camera, but keep the same subject. Output one variation per line,"
@@ -80,7 +85,12 @@ async def list_models() -> list[str]:
 
 # Tasks which modify an existing prompt rather than inventing one. A high temperature
 # makes the model drift off and keep contradicting tags around, so it gets capped.
-_conservative_tasks = {EnhanceTask.instruct, EnhanceTask.detail, EnhanceTask.describe}
+_conservative_tasks = {
+    EnhanceTask.instruct,
+    EnhanceTask.detail,
+    EnhanceTask.describe,
+    EnhanceTask.structure,
+}
 _conservative_temperature = 0.6
 
 
@@ -502,6 +512,99 @@ def merge_negative(existing: str, addition: str) -> str:
     if not new:
         return existing
     return ", ".join([existing.rstrip(" ,")] * bool(existing.strip()) + new)
+
+
+_structure_system = (
+    "You organize image generation prompts. You receive one prompt and sort its content"
+    " into labelled sections, so the user can edit each part on its own.\n\n"
+    "Output format - repeat for every section that has content:\n"
+    "# Section name\n"
+    "the part of the prompt that belongs there\n\n"
+    "Use these sections, in this order, and only those which have content:\n"
+    "- Quality & Style: quality tags, medium, art style, photo style, artist.\n"
+    "- Character: who the person is - subject count, age, ethnicity, face, hair, eyes, skin,"
+    " body shape, breasts, height. NEVER garments or accessories.\n"
+    "- Clothing: every garment, shoe, accessory and piece of jewelry (skirt, dress, top,"
+    " stockings, necklace, glasses, hat) together with its colour, pattern, material and"
+    " state (lifted, open, torn, wet, removed).\n"
+    "- Pose & Expression: pose, gesture, gaze, facial expression, action.\n"
+    "- Environment: location, background, props, weather, time of day.\n"
+    "- Lighting: light sources, mood, colour palette.\n"
+    "- Camera: shot type, angle, lens, depth of field, framing.\n"
+    "- Other: anything that fits nowhere else.\n\n"
+    "Rules:\n"
+    "- Keep the wording, the language, the syntax and the weights of the original prompt"
+    " ((word:1.2), <lora:...>, __wildcards__, [[a|b]]). Move text, do not rewrite it.\n"
+    "- Keep the original style: a comma separated tag list stays a tag list, prose stays"
+    " prose.\n"
+    "- Every part of the prompt goes into exactly one section. Never add, remove or"
+    " translate anything.\n"
+    "- Content goes on a single line below its heading. Never put a '#' anywhere else.\n"
+    "- Answer with the sections only. No explanation, no markdown, no quotes.\n\n"
+    "Example input: masterpiece, 1girl, red hair, forest, fog, red dress, wide shot\n"
+    "Example output:\n"
+    "# Quality & Style\nmasterpiece\n\n"
+    "# Character\n1girl, red hair\n\n"
+    "# Clothing\nred dress\n\n"
+    "# Environment\nforest, fog\n\n"
+    "# Camera\nwide shot"
+)
+
+
+def structure_system_prompt() -> str:
+    """Sorting a prompt is not writing one, so the family profile does not apply."""
+    return _structure_system
+
+
+_section_names = {
+    "quality & style",
+    "character",
+    "clothing",
+    "pose & expression",
+    "environment",
+    "lighting",
+    "camera",
+    "other",
+}
+
+
+def _heading_of(line: str) -> str:
+    """The section name if `line` is a heading, even one the model wrote without '#'."""
+    bare = line.strip().lstrip("#*- ").rstrip("*:, ").strip()
+    if line.lstrip().startswith("#") or bare.lower() in _section_names:
+        return bare
+    return ""
+
+
+def format_sections(response: str) -> str:
+    """Normalizes the sectioned reply into '# Heading' comment lines, each followed by its
+    content. Models repeat tags across sections (a skirt under Character and again under
+    Clothing), so every tag is kept only once, in the last section that lists it - the
+    later sections are the more specific ones. Content lines get a trailing comma so the
+    sections still run together as one prompt once the comments are stripped."""
+    sections: list[tuple[str, list[str]]] = []
+    for line in response.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if heading := _heading_of(line):
+            sections.append((heading, []))
+            continue
+        if not sections:
+            sections.append(("Other", []))
+        sections[-1][1].extend(t.strip() for t in line.split(",") if t.strip())
+
+    seen: set[str] = set()
+    for _name, terms in reversed(sections):
+        kept = []
+        for term in reversed(terms):
+            key = normalize_term(term)
+            if key not in seen:
+                seen.add(key)
+                kept.append(term)
+        terms[:] = reversed(kept)
+    blocks = [f"# {name}\n" + ", ".join(terms) for name, terms in sections if terms]
+    return ",\n\n".join(blocks).strip()
 
 
 def build_prompt(

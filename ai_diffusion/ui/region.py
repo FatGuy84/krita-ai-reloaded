@@ -654,6 +654,10 @@ class ActiveRegionWidget(QFrame):
         menu.addAction(_("Rewrite from scratch"), partial(self._enhance, EnhanceTask.rewrite))
         menu.addAction(_("Add detail only"), partial(self._enhance, EnhanceTask.detail))
         menu.addAction(
+            _("Split into sections (character, clothing, ...)"),
+            partial(self._enhance, EnhanceTask.structure),
+        )
+        menu.addAction(
             _("Variations as sequential wildcard"),
             partial(self._enhance, EnhanceTask.variations),
         )
@@ -842,7 +846,11 @@ class ActiveRegionWidget(QFrame):
             self._enhance_job = ollama.Generation()
             response = await self._enhance_job.run(
                 request,
-                system=profile.system_for(task),
+                system=(
+                    ollama.structure_system_prompt()
+                    if task is EnhanceTask.structure
+                    else profile.system_for(task)
+                ),
                 model=profile.model_for(task),
                 temperature=ollama.temperature_for(task),
                 images=images,
@@ -865,6 +873,8 @@ class ActiveRegionWidget(QFrame):
                     self._report_error(_("The language model did not return variations"))
                     return
                 result = "[[" + "|".join(lines) + "]]"
+            elif task is EnhanceTask.structure:
+                result = ollama.format_sections(response)
             elif task is EnhanceTask.detail and not selection:
                 result = f"{source.rstrip(' ,')}, {response}" if source.strip() else response
                 protected = ollama.ProtectedPrompt(result, [])  # tokens are still in `source`
