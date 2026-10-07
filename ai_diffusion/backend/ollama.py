@@ -469,12 +469,55 @@ def build_pool_prompt(mode: PoolMode, base: str, avoid: list[str] | None = None)
     return text
 
 
-def build_prompt(task: EnhanceTask, prompt: str, count: int = 4, instruction: str = "") -> str:
+_negative_instruction = (
+    "\n\nAnything the change asks to remove, avoid or exclude must NOT stay in the prompt"
+    " as a negation. Answer in two parts: first the complete modified prompt, then a new"
+    " line starting with 'NEGATIVE:' followed by a comma-separated list of the unwanted"
+    " things themselves (for example 'hat, text'), without words like 'no' or 'without'."
+    " If the change excludes nothing, write 'NEGATIVE:' with nothing after it."
+)
+
+_negative_re = re.compile(r"^[ \t>*-]*\**negative(?: prompt)?\**\s*:\**[ \t]*", re.I | re.M)
+
+
+def split_negative(response: str) -> tuple[str, str]:
+    """Separates the 'NEGATIVE:' part the model was asked to append from the prompt."""
+    matches = list(_negative_re.finditer(response))
+    if not matches:
+        return response.strip(), ""
+    last = matches[-1]
+    negative = response[last.end() :].replace("\n", ", ")
+    return response[: last.start()].strip(), re.sub(r"(?:\s*,)+", ",", negative).strip(" ,")
+
+
+def merge_negative(existing: str, addition: str) -> str:
+    """Appends terms to a negative prompt, skipping those that are already in there."""
+    known = {normalize_term(t) for t in existing.split(",")}
+    new = []
+    for term in addition.split(","):
+        key = normalize_term(term)
+        if key and key not in known:
+            known.add(key)
+            new.append(term.strip())
+    if not new:
+        return existing
+    return ", ".join([existing.rstrip(" ,")] * bool(existing.strip()) + new)
+
+
+def build_prompt(
+    task: EnhanceTask,
+    prompt: str,
+    count: int = 4,
+    instruction: str = "",
+    want_negative: bool = False,
+) -> str:
     if task is EnhanceTask.describe:
         # the image carries the content, an existing prompt is not part of the request
         extra = f"\n\nAdditional instruction: {instruction}" if instruction.strip() else ""
         return _task_instructions[task].format(count=count, instruction=extra)
     task_text = _task_instructions[task].format(count=count, instruction=instruction)
+    if want_negative and task is EnhanceTask.instruct:
+        task_text += _negative_instruction
     if not prompt.strip():
         if task is EnhanceTask.instruct:
             # nothing to modify - treat the instruction itself as the idea to write about

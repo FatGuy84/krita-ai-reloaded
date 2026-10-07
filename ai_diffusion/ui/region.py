@@ -18,6 +18,7 @@ from PyQt5.QtGui import (
     QTextCursor,
 )
 from PyQt5.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -261,6 +262,7 @@ class ActiveRegionWidget(QFrame):
         self._enhance_backup: list[str] = []
         self._enhance_backup_limit = 20
         self._last_instruction = ""
+        self._instruction_to_negative = False
         self._enhance_running = False
         self._enhance_job: ollama.Generation | None = None
         self._enhance_task = EnhanceTask.enhance
@@ -706,10 +708,18 @@ class ActiveRegionWidget(QFrame):
         night", "add rain, remove the hat"."""
         if self._enhance_running:
             return
-        dialog = InstructionDialog(self._last_instruction, self)
+        dialog = InstructionDialog(
+            self._last_instruction, self, self.has_negative, self._instruction_to_negative
+        )
         if dialog.exec_() == QDialog.DialogCode.Accepted and dialog.text:
             self._last_instruction = dialog.text
-            self._enhance(EnhanceTask.instruct, self._last_instruction)
+            if self.has_negative:
+                self._instruction_to_negative = dialog.to_negative
+            self._enhance(
+                EnhanceTask.instruct,
+                self._last_instruction,
+                to_negative=self.has_negative and dialog.to_negative,
+            )
 
     def _enhance_clicked(self):
         if self._enhance_running:
@@ -757,6 +767,7 @@ class ActiveRegionWidget(QFrame):
         instruction: str = "",
         use_selection: bool = False,
         canvas_selection: bool = False,
+        to_negative: bool = False,
     ):
         if self._enhance_running:
             return
@@ -765,7 +776,9 @@ class ActiveRegionWidget(QFrame):
                 _("No language model selected. Configure one in Settings -> Prompt AI.")
             )
             return
-        eventloop.run(self._run_enhance(task, instruction, use_selection, canvas_selection))
+        eventloop.run(
+            self._run_enhance(task, instruction, use_selection, canvas_selection, to_negative)
+        )
 
     def _report_error(self, message: str):
         if model := root.active_model:
@@ -779,6 +792,7 @@ class ActiveRegionWidget(QFrame):
         instruction: str = "",
         use_selection: bool = False,
         canvas_selection: bool = False,
+        to_negative: bool = False,
     ):
         region = self.region
         model = root.active_model
@@ -815,7 +829,8 @@ class ActiveRegionWidget(QFrame):
 
             protected = ollama.protect(source)
             count = max(2, settings.ollama_variation_count)
-            request = ollama.build_prompt(task, protected.text, count, instruction)
+            to_negative = to_negative and isinstance(region, RootRegion)
+            request = ollama.build_prompt(task, protected.text, count, instruction, to_negative)
             images = (
                 [_canvas_image(model, canvas_selection)] if task is EnhanceTask.describe else None
             )
@@ -835,6 +850,13 @@ class ActiveRegionWidget(QFrame):
             if not response:
                 self._report_error(_("The language model returned an empty response"))
                 return
+
+            negative_terms = ""
+            if to_negative:
+                response, negative_terms = ollama.split_negative(response)
+                if not response:
+                    self._report_error(_("The language model returned an empty response"))
+                    return
 
             if task is EnhanceTask.variations:
                 lines = [line.strip(" -*\t") for line in response.splitlines()]
@@ -866,6 +888,8 @@ class ActiveRegionWidget(QFrame):
                 self.positive.setTextCursor(cursor)
             else:
                 region.positive = result
+            if negative_terms and isinstance(region, RootRegion):
+                region.negative = ollama.merge_negative(region.negative, negative_terms)
 
             if len(self._enhance_backup) >= self._enhance_backup_limit:
                 self._enhance_backup.pop(0)
@@ -970,12 +994,25 @@ class InstructionDialog(QDialog):
     """Small prompt for a free-form modification of the current text prompt. Kept
     deliberately compact: it is opened often and holds one short sentence."""
 
-    def __init__(self, text: str, parent: QWidget):
+    def __init__(
+        self,
+        text: str,
+        parent: QWidget,
+        offer_negative: bool = False,
+        to_negative: bool = False,
+    ):
         super().__init__(parent)
         self.setWindowTitle(_("Modify Prompt"))
         self.setModal(True)
 
         label = QLabel(_("Change to apply:"), self)
+
+        self._negative_check = QCheckBox(_("Move exclusions to negative prompt"), self)
+        self._negative_check.setToolTip(
+            _('Things the change removes or avoids ("no hat") are added to the negative prompt')
+        )
+        self._negative_check.setChecked(to_negative)
+        self._negative_check.setVisible(offer_negative)
 
         self._edit = QPlainTextEdit(text, self)
         self._edit.setTabChangesFocus(True)
@@ -1006,6 +1043,7 @@ class InstructionDialog(QDialog):
         layout.setSpacing(4)
         layout.addWidget(label)
         layout.addWidget(self._edit)
+        layout.addWidget(self._negative_check)
         layout.addLayout(button_row)
         self.setLayout(layout)
 
@@ -1030,6 +1068,10 @@ class InstructionDialog(QDialog):
     @property
     def text(self):
         return self._edit.toPlainText().strip()
+
+    @property
+    def to_negative(self):
+        return self._negative_check.isChecked()
 
 
 class RegionPromptWidget(QWidget):
