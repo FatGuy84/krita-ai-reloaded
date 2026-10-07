@@ -79,6 +79,9 @@ generates all 4 combinations (black+sitting, black+jumping, white+sitting,
 white+jumping) as batch items 1–4, then repeats. A button next to the batch
 count (the "a×b" icon) reads the prompt and sets the batch count to
 the exact number of combinations for you, so you don't have to count by hand.
+The same icon also sits **next to Loop Generate**: one click there sets the
+batch count to the combinations *and* starts generating. It does nothing when
+the prompt has no sequential wildcards, so it never fires a stray batch.
 
 `<lora:name:weight>` tags work inside `[[...]]` groups too, and are switched
 correctly per batch item — each image in the batch is generated with its own
@@ -155,7 +158,10 @@ Clicking the button runs **Enhance**; the arrow next to it opens the rest:
 * **Describe the image** / **Describe current selection** - captions the
   canvas, or the selected area of it, as a prompt; needs a vision model
 * **Modify with instruction...** - a free-form change such as "make it night,
-  remove the hat"
+  remove the hat". Diffusion models handle "no hat" in the positive prompt
+  badly, so the dialog has a **Move exclusions to negative prompt** checkbox:
+  whatever the instruction removes ("hat") is added to the negative prompt,
+  without duplicating terms already there
 * **Prompt batch for generation...** - see below
 * **Revert** - steps back through earlier versions of the prompt
 
