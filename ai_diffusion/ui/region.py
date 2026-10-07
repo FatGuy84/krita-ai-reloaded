@@ -651,8 +651,11 @@ class ActiveRegionWidget(QFrame):
             _("Enhance selection"), partial(self._enhance, EnhanceTask.enhance, "", True)
         )
         self._enhance_selection_action.setVisible(False)
-        menu.addAction(_("Rewrite from scratch"), partial(self._enhance, EnhanceTask.rewrite))
+        # Grouped by kind - prompt rewrites, image captions, dialogs, undo - and alphabetical
+        # within a group. Enhance stays on top (it is what the button does) and Revert last.
+        menu.addSeparator()
         menu.addAction(_("Add detail only"), partial(self._enhance, EnhanceTask.detail))
+        menu.addAction(_("Rewrite from scratch"), partial(self._enhance, EnhanceTask.rewrite))
         menu.addAction(
             _("Split into sections (character, clothing, ...)"),
             partial(self._enhance, EnhanceTask.structure),

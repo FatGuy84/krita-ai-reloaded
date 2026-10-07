@@ -151,8 +151,12 @@ Clicking the button runs **Enhance**; the arrow next to it opens the rest:
 
 * **Enhance** / **Enhance selection** - improve the whole prompt, or only the
   text selected in the prompt field
-* **Rewrite from scratch** - a new prompt for the same subject
 * **Add detail only** - keeps your wording and adds to it
+* **Rewrite from scratch** - a new prompt for the same subject
+* **Split into sections** - sorts a long prompt under `# Quality & Style`,
+  `# Character`, `# Clothing`, `# Pose & Expression`, `# Environment`,
+  `# Lighting` and `# Camera` comment headings, so you can find and edit one
+  part. Nothing is rewritten: weights, LoRA tags and wildcards stay as they are
 * **Variations as sequential wildcard** - writes several alternatives as one
   `[[a|b|c]]` group (count set by **Variation Count** in the settings)
 * **Describe the image** / **Describe current selection** - captions the
