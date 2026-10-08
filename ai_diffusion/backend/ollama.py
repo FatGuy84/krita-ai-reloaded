@@ -556,16 +556,17 @@ def structure_system_prompt() -> str:
     return _structure_system
 
 
-_section_names = {
-    "quality & style",
-    "character",
-    "clothing",
-    "pose & expression",
-    "environment",
-    "lighting",
-    "camera",
-    "other",
-}
+_section_order = [
+    "Quality & Style",
+    "Character",
+    "Clothing",
+    "Pose & Expression",
+    "Environment",
+    "Lighting",
+    "Camera",
+    "Other",
+]
+_section_names = {name.lower() for name in _section_order}
 
 
 def _heading_of(line: str) -> str:
@@ -576,12 +577,17 @@ def _heading_of(line: str) -> str:
     return ""
 
 
-def format_sections(response: str) -> str:
+def format_sections(response: str, source: str = "") -> str:
     """Normalizes the sectioned reply into '# Heading' comment lines, each followed by its
     content. Models repeat tags across sections (a skirt under Character and again under
     Clothing), so every tag is kept only once, in the last section that lists it - the
     later sections are the more specific ones. Content lines get a trailing comma so the
-    sections still run together as one prompt once the comments are stripped."""
+    sections still run together as one prompt once the comments are stripped.
+
+    Models also drop tags they don't know where to put (score_7, no humans) and mix up the
+    section order, however clearly they are told not to. So the sections are put back in
+    the documented order, and every tag of `source` missing from the reply goes under
+    'Other' - sorting must never lose part of the prompt."""
     sections: list[tuple[str, list[str]]] = []
     for line in response.splitlines():
         line = line.strip()
@@ -603,7 +609,26 @@ def format_sections(response: str) -> str:
                 seen.add(key)
                 kept.append(term)
         terms[:] = reversed(kept)
-    blocks = [f"# {name}\n" + ", ".join(terms) for name, terms in sections if terms]
+
+    missing = []
+    for term in source.split(","):
+        term = term.strip()
+        if term and (key := normalize_term(term)) not in seen:
+            seen.add(key)
+            missing.append(term)
+    if missing:
+        sections.append(("Other", missing))
+
+    merged: dict[str, tuple[str, list[str]]] = {}
+    for name, terms in sections:
+        if name.lower() in merged:
+            merged[name.lower()][1].extend(terms)
+        else:
+            merged[name.lower()] = (name, list(terms))
+    rank = {name.lower(): float(i) for i, name in enumerate(_section_order)}
+    # headings the model made up go just before Other, in the order it wrote them
+    ordered = sorted(merged.values(), key=lambda s: rank.get(s[0].lower(), rank["other"] - 0.5))
+    blocks = [f"# {name}\n" + ", ".join(terms) for name, terms in ordered if terms]
     return ",\n\n".join(blocks).strip()
 
 
