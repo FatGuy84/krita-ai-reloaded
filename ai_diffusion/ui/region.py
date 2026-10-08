@@ -877,7 +877,8 @@ class ActiveRegionWidget(QFrame):
                     return
                 result = "[[" + "|".join(lines) + "]]"
             elif task is EnhanceTask.structure:
-                result = ollama.format_sections(response, protected.text)
+                result = ollama.format_sections(response, protected.text, protected.tokens)
+                protected = ollama.ProtectedPrompt(result, [])  # already in their sections
             elif task is EnhanceTask.detail and not selection:
                 result = f"{source.rstrip(' ,')}, {response}" if source.strip() else response
                 protected = ollama.ProtectedPrompt(result, [])  # tokens are still in `source`

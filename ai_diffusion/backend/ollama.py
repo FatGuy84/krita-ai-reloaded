@@ -299,7 +299,8 @@ def parse_terms(text: str) -> list[str]:
 
 # LoRA tags, file wildcards, random and sequential wildcard groups. These carry meaning
 # for the plugin and get mangled if the model is allowed to rewrite them.
-_protected_re = re.compile(r"<lora:[^>]*>|__[^_\s]+?__|\[\[.*?\]\]|\{[^{}]*\|[^{}]*\}")
+# File wildcards are matched like text.pattern_file_wildcard: names may contain '_', '/'.
+_protected_re = re.compile(r"<lora:[^>]*>|__[\w\-./]+?__|\[\[.*?\]\]|\{[^{}]*\|[^{}]*\}")
 
 
 @dataclass
@@ -565,6 +566,7 @@ _section_order = [
     "Lighting",
     "Camera",
     "Other",
+    "Loras",  # filled by the plugin, not the model: LoRA tags never reach it
 ]
 _section_names = {name.lower() for name in _section_order}
 
@@ -577,7 +579,7 @@ def _heading_of(line: str) -> str:
     return ""
 
 
-def format_sections(response: str, source: str = "") -> str:
+def format_sections(response: str, source: str = "", protected: list[str] | None = None) -> str:
     """Normalizes the sectioned reply into '# Heading' comment lines, each followed by its
     content. Models repeat tags across sections (a skirt under Character and again under
     Clothing), so every tag is kept only once, in the last section that lists it - the
@@ -587,7 +589,11 @@ def format_sections(response: str, source: str = "") -> str:
     Models also drop tags they don't know where to put (score_7, no humans) and mix up the
     section order, however clearly they are told not to. So the sections are put back in
     the documented order, and every tag of `source` missing from the reply goes under
-    'Other' - sorting must never lose part of the prompt."""
+    'Other' - sorting must never lose part of the prompt.
+
+    `protected` are the parts taken out before the model saw the prompt (see `protect`):
+    LoRA tags go under a last '# Loras' heading, one per line; wildcards and wildcard
+    groups under 'Other'."""
     sections: list[tuple[str, list[str]]] = []
     for line in response.splitlines():
         line = line.strip()
@@ -621,6 +627,9 @@ def format_sections(response: str, source: str = "") -> str:
             missing.append(term)
     if missing:
         sections.append(("Other", missing))
+    loras = [t for t in protected or [] if t.startswith("<lora:")]
+    if rest := [t for t in protected or [] if not t.startswith("<lora:")]:
+        sections.append(("Other", rest))
 
     merged: dict[str, tuple[str, list[str]]] = {}
     for name, terms in sections:
@@ -632,6 +641,8 @@ def format_sections(response: str, source: str = "") -> str:
     # headings the model made up go just before Other, in the order it wrote them
     ordered = sorted(merged.values(), key=lambda s: rank.get(s[0].lower(), rank["other"] - 0.5))
     blocks = [f"# {name}\n" + ", ".join(terms) for name, terms in ordered if terms]
+    if loras:
+        blocks.append("# Loras\n" + ",\n".join(loras))
     return ",\n\n".join(blocks).strip()
 
 
