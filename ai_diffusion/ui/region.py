@@ -645,7 +645,7 @@ class ActiveRegionWidget(QFrame):
         return None
 
     def _create_enhance_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         menu.addAction(_("Enhance"), partial(self._enhance, EnhanceTask.enhance))
         self._enhance_selection_action = menu.addAction(
             _("Enhance selection"), partial(self._enhance, EnhanceTask.enhance, "", True)

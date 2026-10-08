@@ -787,7 +787,7 @@ class HistoryWidget(QListWidget):
 
     def _show_batch_context_menu(self, header_item: QListWidgetItem, pos: QPoint):
         key = header_item.data(Qt.ItemDataRole.UserRole)
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         label = _("Expand Batch") if key in self._collapsed_batches else _("Collapse Batch")
         menu.addAction(label, lambda: self._toggle_batch_collapse(header_item))
         menu.addAction(_("Select Batch"), lambda: self._select_batch(header_item))
@@ -801,7 +801,7 @@ class HistoryWidget(QListWidget):
             self._show_batch_context_menu(item, pos)
         elif item is not None:
             job = self._model.jobs.find(self._item_data(item).job)
-            menu = QMenu(self)
+            menu = theme.style_menu(QMenu(self))
             # Shortcut hints go into every entry that has one (after a tab, which Qt
             # right-aligns): the keys are handled in event() rather than by QAction,
             # so without the hint there is nothing to discover them from.
@@ -1573,7 +1573,7 @@ class GenerationWidget(QWidget):
         return action
 
     def _create_generate_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         menu.addAction(
             self._mk_action(InpaintMode.automatic, _("Generate"), "workspace-generation")
         )
@@ -1581,7 +1581,7 @@ class GenerationWidget(QWidget):
         return menu
 
     def _create_inpaint_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
 
         def add(mode: InpaintMode, text: str, icon: str, is_edit: bool | None = False):
             text = text or self._inpaint_text[mode]
@@ -1598,7 +1598,7 @@ class GenerationWidget(QWidget):
         return menu
 
     def _create_generate_region_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         menu.addAction(
             self._mk_action(InpaintMode.automatic, _("Generate Region"), "generate-region")
         )
@@ -1610,13 +1610,13 @@ class GenerationWidget(QWidget):
         return menu
 
     def _create_refine_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         menu.addAction(self._mk_action(InpaintMode.automatic, _("Refine"), "refine"))
         menu.addAction(self._mk_action(InpaintMode.automatic, _("Edit"), "edit", is_edit=True))
         return menu
 
     def _create_refine_selection_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         menu.addAction(self._mk_action(InpaintMode.automatic, _("Refine"), "refine"))
         menu.addAction(self._mk_action(InpaintMode.automatic, _("Edit"), "edit", is_edit=True))
         menu.addAction(
@@ -1627,7 +1627,7 @@ class GenerationWidget(QWidget):
         return menu
 
     def _create_refine_region_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         menu.addAction(self._mk_action(InpaintMode.automatic, _("Refine Region"), "refine-region"))
         menu.addAction(
             self._mk_action(InpaintMode.custom, _("Refine Region (Custom)"), "inpaint-custom")
@@ -1635,13 +1635,13 @@ class GenerationWidget(QWidget):
         return menu
 
     def _create_edit_menu(self):
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         menu.addAction(self._mk_action(InpaintMode.automatic, _("Edit"), "edit"))
         menu.addAction(self._mk_action(InpaintMode.custom, _("Edit (Custom)"), "inpaint-custom"))
         return menu
 
     def _create_dlss5_menu(self, title: str, use_selection: bool):
-        menu = QMenu(title, self)
+        menu = theme.style_menu(QMenu(title, self))
         menu.setIcon(theme.icon("workspace-upscaling"))
         for style in ("Cinematic", "Default", "Natural"):
             # triggered passes its checked flag first, so it must not land in `s`

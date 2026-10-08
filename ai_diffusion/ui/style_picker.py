@@ -636,7 +636,7 @@ class StyleBrowser(QWidget):
         style = Styles.list().find(filename)
         if style is None:
             return
-        menu = QMenu(self)
+        menu = theme.style_menu(QMenu(self))
         label = _("Remove from Favorites") if self._is_favorite(style) else _("Add to Favorites")
         menu.addAction(label + "\tF", lambda: self._toggle_favorite(style))
         if not self._is_builtin(style):
