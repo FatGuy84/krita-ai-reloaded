@@ -600,6 +600,9 @@ def format_sections(response: str, source: str = "") -> str:
             sections.append(("Other", []))
         sections[-1][1].extend(t.strip() for t in line.split(",") if t.strip())
 
+    # a tag the model only re-spelled ('score\_7' - a markdown escape - for 'score_7') is
+    # written back exactly as the user typed it
+    original = {normalize_term(t): t.strip() for t in source.split(",") if t.strip()}
     seen: set[str] = set()
     for _name, terms in reversed(sections):
         kept = []
@@ -607,7 +610,7 @@ def format_sections(response: str, source: str = "") -> str:
             key = normalize_term(term)
             if key not in seen:
                 seen.add(key)
-                kept.append(term)
+                kept.append(original.get(key, term))
         terms[:] = reversed(kept)
 
     missing = []
