@@ -99,6 +99,14 @@ Other batch changes:
   overnight) until you toggle it off again. If generation fails outright
   (bad prompt, disconnected server, etc.) it turns itself back off instead of
   spinning uselessly.
+* **Pause queue**: a pause toggle next to Loop Generate. The running generation
+  finishes, queued jobs (batches, Loop Generate) wait until you click again.
+  ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the
+  current image. Local ComfyUI only.
+* **Preview while generating**: intermediate sampler results show on the canvas
+  in the preview layer, replaced by the real result when the job finishes.
+  Switch off in Settings → *Preview While Generating*. Uses ComfyUI's own
+  previews (low resolution, quality depends on the server's preview method).
 
   ![Loop Generate keeps enqueuing batches until toggled off](media/demo-loop-generate.gif)
 

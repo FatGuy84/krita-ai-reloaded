@@ -479,6 +479,16 @@ class Settings(QObject):
         _("Action to take when an image generation job finishes"),
     )
 
+    show_generation_preview: bool
+    _show_generation_preview = Setting(
+        _("Preview While Generating"),
+        True,
+        _(
+            "Show intermediate results on the canvas while an image is being generated "
+            "(ComfyUI previews, low resolution)"
+        ),
+    )
+
     show_steps: bool
     _show_steps = Setting(
         _("Show Steps"), False, _("Display the number of steps to be evaluated in the weights box.")

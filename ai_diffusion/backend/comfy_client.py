@@ -185,6 +185,10 @@ class ComfyClient(Client):
         self._messages: asyncio.Queue[ClientMessage] = asyncio.Queue()
         self._queue: ClientJobQueue[JobInfo] = ClientJobQueue()
         self._is_connected = False
+        self._resumed = asyncio.Event()  # cleared while the queue is paused
+        self._resumed.set()
+        self._held_job: JobInfo | None = None  # taken off the queue, waiting for resume
+        self._last_preview = 0.0
 
         self._requests.add_header("ngrok-skip-browser-warning", "69420")
         self._requests.add_header("skip_zrok_interstitial", "69420")
@@ -367,7 +371,14 @@ class ComfyClient(Client):
         try:
             while self._is_connected:
                 await self._waiting_job.wait()  # first wait for slot on server
+                await self._resumed.wait()  # paused: let the running job finish, start nothing new
                 job = await self._queue.get()  # then get highest priority job from queue
+                if not self._resumed.is_set():  # paused while waiting for a job to arrive
+                    self._held_job = job
+                    await self._resumed.wait()
+                    if self._held_job is None:  # cancelled in the meantime
+                        continue
+                    self._held_job = None
                 try:
                     await self._run_job(job)
                 except Exception as e:
@@ -392,6 +403,9 @@ class ComfyClient(Client):
             "client_id": self._id,
             "prompt_id": job.id,
         }
+        if settings.show_generation_preview:
+            # per-prompt override, so ComfyUI needs no --preview-method launch argument
+            data["extra_data"] = {"preview_method": "auto"}
         self._waiting_job.set(job)
         try:
             result = await self._post("prompt", data)
@@ -436,6 +450,8 @@ class ComfyClient(Client):
                 image = _extract_message_png_image(memoryview(msg))
                 if image is not None:
                     images.append(image)
+                elif self._active_job is not None and settings.show_generation_preview:
+                    await self._report_preview(memoryview(msg))
 
             elif isinstance(msg, str):
                 msg = json.loads(msg)
@@ -523,6 +539,24 @@ class ComfyClient(Client):
         except asyncio.CancelledError:
             pass
 
+    async def _report_preview(self, data: memoryview):
+        now = time()
+        if now - self._last_preview < 0.3 or self._active_job is None:
+            return  # sampler emits one preview per step, no need to repaint that often
+        image = _extract_message_preview(data)
+        if image is not None:
+            self._last_preview = now
+            await self._report(
+                ClientEvent.preview, self._active_job.id, images=ImageCollection([image])
+            )
+
+    def set_paused(self, paused: bool):
+        if paused:
+            self._resumed.clear()
+        else:
+            self._resumed.set()
+        return True
+
     async def interrupt(self):
         await self._post("interrupt", {})
 
@@ -532,6 +566,8 @@ class ComfyClient(Client):
         tasks = [self._post("queue", {"delete": list(job_ids)})]
         if (job := self._waiting_job.peek()) and job.id in job_ids:
             self._waiting_job.clear()
+        if self._held_job is not None and self._held_job.id in job_ids:
+            self._held_job = None
         self._queue.remove_if(lambda j: j.id in job_ids)
         tasks.extend(self._report(ClientEvent.interrupted, id) for id in job_ids)
         await asyncio.gather(*tasks)
@@ -985,6 +1021,16 @@ def _extract_message_png_image(data: memoryview):
         event, format = struct.unpack_from(">II", data)
         # ComfyUI server.py: BinaryEventTypes.PREVIEW_IMAGE=1
         if event == 1 and format == 2:  # format: JPEG=1, PNG=2
+            return Image.from_bytes(data[s:])
+    return None
+
+
+def _extract_message_preview(data: memoryview):
+    s = struct.calcsize(">II")
+    if len(data) > s:
+        event, format = struct.unpack_from(">II", data)
+        # intermediate sampler previews: PREVIEW_IMAGE=1 with format JPEG=1
+        if event == 1 and format == 1:
             return Image.from_bytes(data[s:])
     return None
 

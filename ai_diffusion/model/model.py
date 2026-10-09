@@ -46,7 +46,7 @@ from ..backend.resolution import compute_bounds, compute_relative_bounds
 from ..backend.resources import ControlMode
 from ..document import Document, KritaDocument, SelectionModifiers
 from ..files import FileLibrary
-from ..image import BlendMode, Bounds, DummyImage, Extent, Image, Mask
+from ..image import BlendMode, Bounds, DummyImage, Extent, Image, ImageCollection, Mask
 from ..layer import Layer, LayerType, RestoreActiveLayer
 from ..localization import translate as _
 from ..pose import Pose
@@ -182,6 +182,7 @@ class DocumentModel(QObject, ObservableProperties):
         self._doc = document
         self._connection = connection
         self._layer: Layer | None = None
+        self._preview_job_id: str | None = None  # job whose sampler preview is on the canvas
         self.generate_seed()
         self.jobs = JobQueue()
         self.regions = RootRegion(self)
@@ -782,6 +783,8 @@ class DocumentModel(QObject, ObservableProperties):
             self.progress_kind = ProgressKind.upload
             self.progress = message.progress
             self.progress_status = _("Uploading")
+        elif message.event is ClientEvent.preview:
+            self._show_sampling_preview(job, message.images)
         elif message.event is ClientEvent.output:
             self.custom.handle_output(job, message.result)
         elif message.event is ClientEvent.finished:
@@ -809,6 +812,8 @@ class DocumentModel(QObject, ObservableProperties):
         if job.kind is JobKind.upscaling:
             self.upscale.set_in_progress(False)
         self.progress_status = ""
+        had_preview = self._preview_job_id == job.id
+        self._preview_job_id = None
 
         if event is ClientEvent.finished:
             self.jobs.notify_finished(job)
@@ -823,6 +828,19 @@ class DocumentModel(QObject, ObservableProperties):
         else:
             self.jobs.notify_cancelled(job)
             self.progress = 0
+
+        if had_preview:  # back to whatever result is selected, or hide the sampling preview
+            self.update_preview()
+
+    def _show_sampling_preview(self, job: Job, images: ImageCollection | None):
+        if job.kind is not JobKind.diffusion or not images or len(images) == 0:
+            return
+        image = images[0]
+        bounds = job.params.bounds
+        if image.extent != bounds.extent:  # sampler previews are low resolution
+            image = Image.scale(image, bounds.extent)
+        self._preview_job_id = job.id
+        self._write_preview_layer(f"[Preview] {trim_text(job.params.name, 77)}", image, bounds)
 
     def update_preview(self):
         if selection := self.jobs.selection:
@@ -839,6 +857,9 @@ class DocumentModel(QObject, ObservableProperties):
         name = f"[{name_prefix}] {trim_text(job.params.name, 77)}"
         image = job.results[index]
         bounds = Bounds(*job.params.bounds.offset, *image.extent)
+        self._write_preview_layer(name, image, bounds)
+
+    def _write_preview_layer(self, name: str, image: Image, bounds: Bounds):
         if self._layer and self._layer.was_removed:
             self._layer = None  # layer was removed by user
         if self._layer is not None:

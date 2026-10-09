@@ -42,7 +42,9 @@ class Connection(QObject, ObservableProperties):
     state = Property(ConnectionState.disconnected)
     error = Property("")
     progress = Property((1, 1))
+    paused = Property(False, setter="set_paused")
 
+    paused_changed = pyqtSignal(bool)
     state_changed = pyqtSignal(ConnectionState)
     error_changed = pyqtSignal(str)
     progress_changed = pyqtSignal(tuple)
@@ -152,10 +154,18 @@ class Connection(QObject, ObservableProperties):
             self._task = None
 
         self._client = None
+        self.paused = False
         self.error = ""
         self.missing_resources = None
         self.state = ConnectionState.disconnected
         self._update_state()
+
+    def set_paused(self, value: bool):
+        client = self.client_if_connected
+        if client is None or not client.set_paused(value):
+            value = False  # not connected, or unsupported by this client (cloud)
+        self._paused = value
+        self.paused_changed.emit(value)
 
     def interrupt(self):
         eventloop.run(self.client.interrupt())

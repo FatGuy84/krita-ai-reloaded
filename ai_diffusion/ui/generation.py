@@ -1400,6 +1400,25 @@ class GenerationWidget(QWidget):
             lambda on: self.loop_button.setIcon(self._loop_icon_active if on else self._loop_icon)
         )
 
+        self.pause_button = QToolButton(self)
+        self._pause_icon = theme.icon("pause")
+        self._pause_icon_active = _tint_icon("pause", QColor(theme.strong_highlight))
+        self.pause_button.setIcon(self._pause_icon)
+        self.pause_button.setCheckable(True)
+        self.pause_button.setFixedHeight(self.generate_button.height() - 2)
+        self.pause_button.setToolTip(
+            _(
+                "Pause the queue: the running generation finishes, queued jobs wait until resumed"
+                " - click again to resume"
+            )
+        )
+        self.pause_button.setStyleSheet(
+            f"QToolButton:checked {{ background-color: {theme.active};"
+            f" border: 1px solid {theme.strong_highlight}; border-radius: 3px; }}"
+        )
+        self.pause_button.toggled.connect(self._toggle_pause)
+        root.connection.paused_changed.connect(self._update_pause_button)
+
         self.combinations_button = QToolButton(self)
         self.combinations_button.setIcon(theme.icon("combinations"))
         self.combinations_button.setFixedHeight(self.generate_button.height() - 2)
@@ -1413,6 +1432,7 @@ class GenerationWidget(QWidget):
         actions_layout = QHBoxLayout()
         actions_layout.addLayout(generate_layout)
         actions_layout.addWidget(self.loop_button)
+        actions_layout.addWidget(self.pause_button)
         actions_layout.addWidget(self.combinations_button)
         actions_layout.addWidget(self.queue_button)
         layout.addLayout(actions_layout)
@@ -1542,6 +1562,17 @@ class GenerationWidget(QWidget):
             self.strength_slider.model = model
             self.history.model_ = model
             self.update_generate_options()
+
+    def _toggle_pause(self, on: bool):
+        root.connection.paused = on
+        if on and not root.connection.paused:  # client doesn't support it
+            self.pause_button.setChecked(False)
+
+    def _update_pause_button(self, paused: bool):
+        self.pause_button.blockSignals(True)
+        self.pause_button.setChecked(paused)
+        self.pause_button.blockSignals(False)
+        self.pause_button.setIcon(self._pause_icon_active if paused else self._pause_icon)
 
     def _generate_combinations(self):
         if count := wildcard_combination_count(self.model):

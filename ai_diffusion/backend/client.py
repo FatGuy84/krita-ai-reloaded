@@ -40,6 +40,7 @@ class ClientEvent(Enum):
     published = 8
     output = 9
     payment_required = 10
+    preview = 11
 
 
 class TextOutput(NamedTuple):
@@ -416,6 +417,10 @@ class Client(ABC):
 
     @abstractmethod
     async def cancel(self, job_ids: Iterable[str]): ...
+
+    def set_paused(self, paused: bool) -> bool:
+        """Hold back queued jobs (the running one finishes). Returns False if unsupported."""
+        return False
 
     async def refresh(self):
         pass
