@@ -541,7 +541,10 @@ class ComfyClient(Client):
 
     async def _report_preview(self, data: memoryview):
         now = time()
-        if now - self._last_preview < 0.3 or self._active_job is None:
+        if (
+            now - self._last_preview < settings.generation_preview_interval
+            or self._active_job is None
+        ):
             return  # sampler emits one preview per step, no need to repaint that often
         image = _extract_message_preview(data)
         if image is not None:

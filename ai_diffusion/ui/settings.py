@@ -744,6 +744,10 @@ class InterfaceSettings(SettingsTab):
             ComboBoxSetting(S._generation_finished_action, parent=self),
         )
         self.add("show_generation_preview", SwitchSetting(S._show_generation_preview, parent=self))
+        self.add(
+            "generation_preview_interval",
+            SliderSetting(S._generation_preview_interval, self, 0.1, 5.0, "{} s"),
+        )
         self.add("apply_behavior", ComboBoxSetting(S._apply_behavior, parent=self))
         self.add("apply_region_behavior", ComboBoxSetting(S._apply_region_behavior, parent=self))
         self.add("apply_behavior_live", ComboBoxSetting(S._apply_behavior_live, parent=self))

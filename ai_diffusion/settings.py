@@ -489,6 +489,17 @@ class Settings(QObject):
         ),
     )
 
+    generation_preview_interval: float
+    _generation_preview_interval = Setting(
+        _("Preview Update Interval"),
+        0.3,
+        _(
+            "Minimum time between canvas updates of the preview while generating, "
+            "0.1 to 5.0 seconds. Lower is smoother but costs more time per image, "
+            "especially at large sizes."
+        ),
+    )
+
     show_steps: bool
     _show_steps = Setting(
         _("Show Steps"), False, _("Display the number of steps to be evaluated in the weights box.")

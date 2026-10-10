@@ -106,6 +106,7 @@ Other batch changes:
 * **Preview while generating**: intermediate sampler results show on the canvas
   in the preview layer, replaced by the real result when the job finishes.
   Toggle with the eye button next to Pause (or Settings → *Preview While Generating*).
+  Update rate is set in Settings → *Preview Update Interval* (0.1–5.0 s, default 0.3 s).
   Picking a result in the history pauses previews so they don't pull the canvas away. Uses ComfyUI's own
   previews (low resolution, quality depends on the server's preview method).
 
