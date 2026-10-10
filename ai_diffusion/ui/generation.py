@@ -1419,6 +1419,22 @@ class GenerationWidget(QWidget):
         self.pause_button.toggled.connect(self._toggle_pause)
         root.connection.paused_changed.connect(self._update_pause_button)
 
+        self.preview_button = QToolButton(self)
+        self._preview_icon = theme.icon("eye")
+        self._preview_icon_active = _tint_icon("eye", QColor(theme.strong_highlight))
+        self.preview_button.setCheckable(True)
+        self.preview_button.setFixedHeight(self.generate_button.height() - 2)
+        self.preview_button.setToolTip(
+            _("Show intermediate results on the canvas while generating - click to toggle")
+        )
+        self.preview_button.setStyleSheet(
+            f"QToolButton:checked {{ background-color: {theme.active};"
+            f" border: 1px solid {theme.strong_highlight}; border-radius: 3px; }}"
+        )
+        self.preview_button.setChecked(settings.show_generation_preview)
+        self._update_preview_button(settings.show_generation_preview)
+        self.preview_button.toggled.connect(self._toggle_preview)
+
         self.combinations_button = QToolButton(self)
         self.combinations_button.setIcon(theme.icon("combinations"))
         self.combinations_button.setFixedHeight(self.generate_button.height() - 2)
@@ -1433,6 +1449,7 @@ class GenerationWidget(QWidget):
         actions_layout.addLayout(generate_layout)
         actions_layout.addWidget(self.loop_button)
         actions_layout.addWidget(self.pause_button)
+        actions_layout.addWidget(self.preview_button)
         actions_layout.addWidget(self.combinations_button)
         actions_layout.addWidget(self.queue_button)
         layout.addLayout(actions_layout)
@@ -1562,6 +1579,14 @@ class GenerationWidget(QWidget):
             self.strength_slider.model = model
             self.history.model_ = model
             self.update_generate_options()
+
+    def _toggle_preview(self, on: bool):
+        settings.show_generation_preview = on
+        settings.save()
+        self._update_preview_button(on)
+
+    def _update_preview_button(self, on: bool):
+        self.preview_button.setIcon(self._preview_icon_active if on else self._preview_icon)
 
     def _toggle_pause(self, on: bool):
         root.connection.paused = on

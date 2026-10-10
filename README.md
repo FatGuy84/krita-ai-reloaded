@@ -105,7 +105,8 @@ Other batch changes:
   current image. Local ComfyUI only.
 * **Preview while generating**: intermediate sampler results show on the canvas
   in the preview layer, replaced by the real result when the job finishes.
-  Switch off in Settings → *Preview While Generating*. Uses ComfyUI's own
+  Toggle with the eye button next to Pause (or Settings → *Preview While Generating*).
+  Picking a result in the history pauses previews so they don't pull the canvas away. Uses ComfyUI's own
   previews (low resolution, quality depends on the server's preview method).
 
   ![Loop Generate keeps enqueuing batches until toggled off](media/demo-loop-generate.gif)
