@@ -821,7 +821,9 @@ class DocumentModel(QObject, ObservableProperties):
 
             if job.id and job.kind in [JobKind.diffusion, JobKind.animation]:
                 action = settings.generation_finished_action
-                if action is GenerationFinishedAction.preview and self._layer is None:
+                if action is GenerationFinishedAction.preview and (
+                    self._layer is None or had_preview
+                ):
                     self.jobs.select(job.id, 0)
                 elif action is GenerationFinishedAction.apply:
                     self.apply_generated_result(job.id, 0)
