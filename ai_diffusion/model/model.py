@@ -831,12 +831,20 @@ class DocumentModel(QObject, ObservableProperties):
             self.jobs.notify_cancelled(job)
             self.progress = 0
 
-        if had_preview:  # back to whatever result is selected, or hide the sampling preview
-            self.update_preview()
+        if had_preview:  # replace the sampling preview with the result, or hide it
+            if event is ClientEvent.finished and job.results and self._layer is not None:
+                if selection := self.jobs.selection:
+                    self.show_preview(selection[0].job, selection[0].image)
+                else:
+                    self.hide_preview()
+            else:
+                self.update_preview()
 
     def _show_sampling_preview(self, job: Job, images: ImageCollection | None):
         if job.kind is not JobKind.diffusion or not images or len(images) == 0:
             return
+        if job.state in (JobState.finished, JobState.cancelled):
+            return  # late frame of a job that is already done, would overwrite its result
         image = images[0]
         bounds = job.params.bounds
         if image.extent != bounds.extent:  # sampler previews are low resolution
