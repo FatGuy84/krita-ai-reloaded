@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PyQt5.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -11,7 +12,6 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..backend import workflow
 from ..localization import translate as _
 from ..model.model import DocumentModel
 from . import theme
@@ -42,19 +42,26 @@ class StrengthSweepDialog(QDialog):
         self._start.setToolTip(_("First strength. Higher than 'To' sweeps downwards."))
         self._end.setToolTip(_("Last strength (generated if the steps land on it)"))
 
-        self._seed = QSpinBox(self)
-        self._seed.setRange(-1, 2**31 - 1)
-        self._seed.setSpecialValueText(_("random"))
-        self._seed.setValue(int(model.seed) % (2**31))
-        self._seed.setToolTip(
-            _("Seed used for every image, so strength is the only difference (-1 = random)")
+        self._fixed = QCheckBox(_("Fixed seed"), self)
+        self._fixed.setChecked(True)
+        self._fixed.setToolTip(
+            _(
+                "Same seed for every image, so strength is the only difference. "
+                "Off: every image gets a random seed."
+            )
         )
+        self._seed = QSpinBox(self)
+        self._seed.setRange(0, 2**31 - 1)
+        self._seed.setValue(int(model.seed) % (2**31))
+        self._count = self._spin(1, 50, 1, "")
+        self._count.setToolTip(_("Images generated for each strength value (random seeds)"))
 
         form = QFormLayout()
         form.addRow(_("From:"), self._start)
         form.addRow(_("To:"), self._end)
         form.addRow(_("Step:"), self._step)
-        form.addRow(_("Seed:"), self._seed)
+        form.addRow(self._fixed, self._seed)
+        form.addRow(_("Images per step:"), self._count)
 
         self._summary = QLabel(self)
         self._summary.setWordWrap(True)
@@ -75,8 +82,9 @@ class StrengthSweepDialog(QDialog):
         layout.addLayout(buttons)
         self.setMinimumWidth(320)
 
-        for spin in (self._start, self._end, self._step):
+        for spin in (self._start, self._end, self._step, self._count):
             spin.valueChanged.connect(self._update)
+        self._fixed.toggled.connect(self._update)
         self._update()
 
     def _spin(self, low: int, high: int, value: int, suffix: str):
@@ -89,33 +97,55 @@ class StrengthSweepDialog(QDialog):
     def values(self):
         return sweep_values(self._start.value(), self._end.value(), self._step.value())
 
+    def per_step(self):
+        return 1 if self._fixed.isChecked() else self._count.value()
+
     def _update(self):
         values = self.values()
-        count = len(values)
+        fixed = self._fixed.isChecked()
+        self._seed.setEnabled(fixed)
+        self._count.setEnabled(not fixed)
+        per_step = self.per_step()
+        total = len(values) * per_step
         shown = ", ".join(f"{v}%" for v in values)
-        self._summary.setText(_("{n} images: {values}").format(n=count, values=shown))
-        self._button.setText(_("Generate {n} images").format(n=count))
+        text = _("{n} images: {values}").format(n=total, values=shown)
+        if per_step > 1:
+            text = (
+                _("{steps} steps x {per} images = ").format(steps=len(values), per=per_step) + text
+            )
+        self._summary.setText(text)
+        self._button.setText(_("Generate {n} images").format(n=total))
 
     def _generate(self):
         values = self.values()
         model = self._model
         StrengthSweepDialog._last = (self._start.value(), self._end.value(), self._step.value())
-        seed = self._seed.value()
-        if seed < 0:
-            seed = workflow.generate_seed()
-
         original_strength, original_batch = model.strength, model.batch_count
 
-        def use(value: int):
-            def apply():
-                model.strength = value / 100
-                model.batch_count = 1
+        if self._fixed.isChecked():
 
-            return apply
+            def use(value: int):
+                def apply():
+                    model.strength = value / 100
+                    model.batch_count = 1
 
-        def restore():
-            model.strength = original_strength
-            model.batch_count = original_batch
+                return apply
 
-        model.generate_across([use(v) for v in values], seed, restore)
+            def restore():
+                model.strength = original_strength
+                model.batch_count = original_batch
+
+            model.generate_across([use(v) for v in values], self._seed.value(), restore)
+        else:
+            original_fixed = model.fixed_seed
+            model.fixed_seed = False
+            try:
+                for value in values:
+                    model.strength = value / 100
+                    model.batch_count = self._count.value()
+                    model.generate()
+            finally:
+                model.strength = original_strength
+                model.batch_count = original_batch
+                model.fixed_seed = original_fixed
         self.close()
