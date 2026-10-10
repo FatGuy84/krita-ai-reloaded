@@ -99,6 +99,11 @@ Other batch changes:
   overnight) until you toggle it off again. If generation fails outright
   (bad prompt, disconnected server, etc.) it turns itself back off instead of
   spinning uselessly.
+* **Strength Sweep**: the ⇅ button next to the Strength slider. Pick From, To
+  and Step (e.g. 40% → 75% in steps of 5, or downwards with From > To), plus a
+  fixed seed (prefilled with the current one, -1 = random). The dialog shows how
+  many images that makes; one image per value is queued, so strength is the only
+  difference between them. Your previous strength and batch count are restored.
 * **Pause queue**: a pause toggle next to Loop Generate. The running generation
   finishes, queued jobs (batches, Loop Generate) wait until you click again.
   ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the

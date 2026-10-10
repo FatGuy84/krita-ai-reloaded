@@ -1343,6 +1343,13 @@ class GenerationWidget(QWidget):
         )
         strength_layout = QHBoxLayout()
         strength_layout.addWidget(self.strength_slider)
+        self.sweep_button = QToolButton(self)
+        self.sweep_button.setText("⇅")
+        self.sweep_button.setToolTip(
+            _("Strength Sweep: one image per strength value, e.g. 40% to 75% in steps of 5")
+        )
+        self.sweep_button.clicked.connect(self._open_strength_sweep)
+        strength_layout.addWidget(self.sweep_button)
         strength_layout.addWidget(self.layer_count_widget)
         strength_layout.addWidget(self.add_control_button)
         strength_layout.addWidget(self.add_region_button)
@@ -1579,6 +1586,11 @@ class GenerationWidget(QWidget):
             self.strength_slider.model = model
             self.history.model_ = model
             self.update_generate_options()
+
+    def _open_strength_sweep(self):
+        from .strength_sweep import StrengthSweepDialog
+
+        StrengthSweepDialog(self.model, self).exec_()
 
     def _toggle_preview(self, on: bool):
         settings.show_generation_preview = on
