@@ -183,6 +183,8 @@ class DocumentModel(QObject, ObservableProperties):
         self._connection = connection
         self._layer: Layer | None = None
         self._preview_job_id: str | None = None  # job whose sampler preview is on the canvas
+        self._auto_select = False  # selection is being changed by the model, not the user
+        self._browsing = False  # user picked a result, don't take over the canvas
         self.generate_seed()
         self.jobs = JobQueue()
         self.regions = RootRegion(self)
@@ -194,7 +196,7 @@ class DocumentModel(QObject, ObservableProperties):
         self.custom = CustomWorkspace(workflows, self._generate_custom, self.jobs)
         self._style_connection: QMetaObject.Connection | None = None
 
-        self.jobs.selection_changed.connect(self.update_preview)
+        self.jobs.selection_changed.connect(self._on_selection_changed)
         self.jobs.job_finished.connect(self._continue_loop_generate)
         connection.state_changed.connect(self._init_on_connect)
         connection.error_changed.connect(self._forward_error)
@@ -222,6 +224,7 @@ class DocumentModel(QObject, ObservableProperties):
             self.clear_error()
 
     def generate(self):
+        self._browsing = False  # user wants to see the new generation
         self._generate(self.queue_mode)
 
     def generate_across(self, apply_each: list, seed: int, restore):
@@ -249,6 +252,7 @@ class DocumentModel(QObject, ObservableProperties):
             self.seed = original_seed
 
     def generate_replace(self):
+        self._browsing = False
         self._generate(QueueMode.replace)
 
     def set_loop_generate(self, value: bool):
@@ -821,10 +825,16 @@ class DocumentModel(QObject, ObservableProperties):
 
             if job.id and job.kind in [JobKind.diffusion, JobKind.animation]:
                 action = settings.generation_finished_action
-                if action is GenerationFinishedAction.preview and (
-                    self._layer is None or had_preview
+                if (
+                    action is GenerationFinishedAction.preview
+                    and (self._layer is None or had_preview)
+                    and not self._browsing
                 ):
-                    self.jobs.select(job.id, 0)
+                    self._auto_select = True
+                    try:
+                        self.jobs.select(job.id, 0)
+                    finally:
+                        self._auto_select = False
                 elif action is GenerationFinishedAction.apply:
                     self.apply_generated_result(job.id, 0)
         else:
@@ -843,6 +853,8 @@ class DocumentModel(QObject, ObservableProperties):
     def _show_sampling_preview(self, job: Job, images: ImageCollection | None):
         if job.kind is not JobKind.diffusion or not images or len(images) == 0:
             return
+        if self._browsing:
+            return  # user is looking at a result, keep it on the canvas
         if job.state in (JobState.finished, JobState.cancelled):
             return  # late frame of a job that is already done, would overwrite its result
         image = images[0]
@@ -851,6 +863,11 @@ class DocumentModel(QObject, ObservableProperties):
             image = Image.scale(image, bounds.extent)
         self._preview_job_id = job.id
         self._write_preview_layer(f"[Preview] {trim_text(job.params.name, 77)}", image, bounds)
+
+    def _on_selection_changed(self):
+        if not self._auto_select:
+            self._browsing = bool(self.jobs.selection)
+        self.update_preview()
 
     def update_preview(self):
         if selection := self.jobs.selection:
