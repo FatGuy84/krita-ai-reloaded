@@ -817,6 +817,15 @@ class HistoryWidget(QListWidget):
             if job is None or Styles.list().find(job.params.style) is None:
                 style_action.setEnabled(False)
                 style_action.setToolTip(_("The style of this image no longer exists"))
+            style = Styles.list().find(job.params.style) if job is not None else None
+            is_fav_style = style is not None and style.filename in settings.favorite_styles
+            fav_style_label = (
+                _("Remove Style from Favorites") if is_fav_style else _("Mark Style as Favorite")
+            )
+            fav_style_action = ensure(
+                menu.addAction(fav_style_label, lambda: self._toggle_style_favorite())
+            )
+            fav_style_action.setEnabled(style is not None)
             menu.addAction(_("Apply Strength"), self._apply_strength)
             menu.addAction(_("Apply Seed"), self._apply_seed)
             menu.addSeparator()
@@ -910,6 +919,15 @@ class HistoryWidget(QListWidget):
     def _apply_style(self):
         if (job := self.selected_job) and (style := Styles.list().find(job.params.style)):
             self._model.style = style
+
+    def _toggle_style_favorite(self):
+        if (job := self.selected_job) and (style := Styles.list().find(job.params.style)):
+            favorites = list(settings.favorite_styles)
+            if style.filename in favorites:
+                favorites.remove(style.filename)
+            else:
+                favorites.append(style.filename)
+            settings.favorite_styles = favorites
 
     def _apply_seed(self):
         if job := self.selected_job:

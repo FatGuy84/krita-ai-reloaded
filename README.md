@@ -519,6 +519,9 @@ much faster.
   generated with and make them current. Upstream calls them "Copy Style" and so
   on, which reads like they go to the clipboard — they never did. Apply Style is
   greyed out when the style has since been deleted.
+* **Mark Style as Favorite**: right-click a generated image to add (or remove) the
+  style it was made with to your favorite styles, without opening the style
+  picker. Greyed out when the style no longer exists.
 * **Search the generation history**: a search box above the history list
   filters by prompt text live as you type. A scope dropdown next to it
   narrows the match to "All Prompts", "Raw Only" (the pattern you typed,
