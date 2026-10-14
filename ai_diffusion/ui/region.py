@@ -42,7 +42,7 @@ from ..localization import translate as _
 from ..model.properties import Binding, bind
 from ..model.region import Region, RegionLink, RootRegion, translate_prompt
 from ..model.root import root
-from ..text import char16_index_to_str_index, str_index_to_char16_index
+from ..text import char16_index_to_str_index, format_option_group, str_index_to_char16_index
 from ..util import client_logger as log, ensure
 from . import theme
 from .control import ControlListWidget
@@ -875,7 +875,7 @@ class ActiveRegionWidget(QFrame):
                 if len(lines) < 2:
                     self._report_error(_("The language model did not return variations"))
                     return
-                result = "[[" + "|".join(lines) + "]]"
+                result = format_option_group(lines, sequential=True)
             elif task is EnhanceTask.structure:
                 result = ollama.format_sections(response, protected.text, protected.tokens)
                 protected = ollama.ProtectedPrompt(result, [])  # already in their sections

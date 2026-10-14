@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import (
 )
 
 from .. import eventloop
+from ..text import format_option_group
 from ..backend import ollama
 from ..backend.network import NetworkError
 from ..backend.ollama import PoolMode
@@ -270,7 +271,7 @@ class PromptBatchDialog(QDialog):
             if prompt is None:
                 return
         else:
-            prompt = "[[" + "|".join(self._results) + "]]"
+            prompt = format_option_group(self._results, sequential=True)
         # protected tokens (LoRA tags, wildcards) sit outside the group, so they apply to
         # every entry instead of being repeated inside each one
         self._region.positive = self._protected.restore(prompt)

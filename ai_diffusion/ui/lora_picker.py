@@ -45,6 +45,7 @@ from ..backend.lora_manager import (
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
+from ..text import format_option_group
 from ..wildcards import WildcardLibrary
 from . import theme
 
@@ -918,10 +919,7 @@ class LoraBrowser(QWidget):
         fmt = self._format_combo.currentData()
         if fmt == _FORMAT_SEPARATE:  # all LoRAs together, no wildcard
             return "\n".join(entries)
-        joined = "|\n".join(entries)
-        if fmt == _FORMAT_SEQUENTIAL:
-            return f"[[\n{joined}\n]]"
-        return f"{{\n{joined}\n}}"
+        return format_option_group(entries, fmt == _FORMAT_SEQUENTIAL)
 
 
 class LoraPickerDialog(QDialog):

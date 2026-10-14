@@ -59,6 +59,13 @@ pattern_seq_combined = re.compile(r"\[\[((?:(?!\]\]).)*)\]\]|__seq:([\w\-./]+?)_
 pattern_file_wildcard = re.compile(r"__([\w\-./]+?)__")
 
 
+def format_option_group(options: list[str], sequential: bool):
+    """[[a|b]] or {a|b} with brackets and pipes each on their own line."""
+    joined = "\n|\n".join(options)
+    open_, close = ("[[", "]]") if sequential else ("{", "}")
+    return f"{open_}\n{joined}\n{close}"
+
+
 def strip_prompt_comments(prompt: str):
     """Strip comments (text after #) from the prompt, unless the # is escaped with a backslash,
     or it's a hex color code."""

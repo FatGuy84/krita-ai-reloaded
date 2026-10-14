@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
+from ..text import format_option_group
 from ..wildcards import WildcardLibrary
 from . import theme
 
@@ -441,10 +442,7 @@ class WildcardBrowser(QWidget):
         if mode == _MODE_SEQUENTIAL_FILE:
             return f"__seq:{name}__"
         options = self._library.get(name) or []
-        joined = "|\n".join(options)
-        if mode == _MODE_SEQUENTIAL:
-            return f"[[\n{joined}\n]]"
-        return f"{{\n{joined}\n}}"
+        return format_option_group(options, mode == _MODE_SEQUENTIAL)
 
     def _add_to_prompt(self):
         name = self._selected_name()

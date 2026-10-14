@@ -28,6 +28,7 @@ from PyQt5.QtWidgets import (
 )
 
 from .. import eventloop
+from ..text import format_option_group
 from ..backend import animadex
 from ..backend.animadex import Entry, Facet, SearchResult
 from ..backend.animadex_catalog import Catalog, ImportFailed, offline_facets, wildcard_lines
@@ -604,10 +605,7 @@ class AnimadexBrowser(QWidget):
             return ", ".join(lines)
         # One option per line, like the LoRA browser. Triggers contain commas
         # ("hatsune miku, vocaloid"), which is fine: options only split at "|".
-        joined = "|\n".join(lines)
-        if self._format_combo.currentData() == _FORMAT_SEQUENTIAL:
-            return f"[[\n{joined}\n]]"
-        return f"{{\n{joined}\n}}"
+        return format_option_group(lines, self._format_combo.currentData() == _FORMAT_SEQUENTIAL)
 
     def _on_format_changed(self):
         settings.animadex_multi_format = self._format_combo.currentData()
@@ -620,7 +618,7 @@ class AnimadexBrowser(QWidget):
         self._format_combo.setVisible(len(entries) > 1)
         if entries:
             count = _("{count} selected").format(count=len(entries))
-            preview = self._prompt_text(entries).replace("|\n", " | ").replace("\n", "")
+            preview = self._prompt_text(entries).replace("\n|\n", " | ").replace("\n", "")
             self._selected_label.setText(f"<b>{count}</b> · {html.escape(preview)}")
             self._wildcard_btn.setText(_("Save Selected as Wildcard…"))
         else:
