@@ -109,6 +109,10 @@ Other batch changes:
   finishes, queued jobs (batches, Loop Generate) wait until you click again.
   ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the
   current image. Local ComfyUI only.
+* **Unload models**: *Unload Models* in the queue popup (click the queue button)
+  frees VRAM and RAM on the ComfyUI server, e.g. before switching to another
+  GPU-heavy app. A running generation finishes first; the next job loads its
+  models again. Local ComfyUI only.
 * **Preview while generating**: intermediate sampler results show on the canvas
   in the preview layer, replaced by the real result when the job finishes.
   Toggle with the eye button next to Pause (or Settings → *Preview While Generating*).

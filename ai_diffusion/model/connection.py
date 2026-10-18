@@ -170,6 +170,17 @@ class Connection(QObject, ObservableProperties):
     def interrupt(self):
         eventloop.run(self.client.interrupt())
 
+    def free_memory(self):
+        async def _free():
+            if client := self.client_if_connected:
+                try:
+                    if await client.free_memory():
+                        util.client_logger.info("Requested server to unload all models")
+                except NetworkError as e:
+                    util.client_logger.warning(f"Failed to unload models: {e}")
+
+        eventloop.run(_free())
+
     def cancel(self, job_ids: Iterable[str]):
         eventloop.run(self.client.cancel(job_ids))
 

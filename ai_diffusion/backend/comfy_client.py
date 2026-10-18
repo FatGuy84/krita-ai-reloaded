@@ -563,6 +563,11 @@ class ComfyClient(Client):
     async def interrupt(self):
         await self._post("interrupt", {})
 
+    async def free_memory(self):
+        # ComfyUI frees after the running prompt finishes, queued jobs reload what they need
+        await self._post("free", {"unload_models": True, "free_memory": True})
+        return True
+
     async def cancel(self, job_ids: Iterable[str]):
         # Make sure changes to all queues are processed before suspending this
         # function, otherwise it may interfere with subsequent calls to enqueue.

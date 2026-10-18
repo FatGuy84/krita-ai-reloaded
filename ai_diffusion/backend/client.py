@@ -422,6 +422,10 @@ class Client(ABC):
         """Hold back queued jobs (the running one finishes). Returns False if unsupported."""
         return False
 
+    async def free_memory(self) -> bool:
+        """Unload all models from VRAM/RAM on the server. Returns False if unsupported."""
+        return False
+
     async def refresh(self):
         pass
 

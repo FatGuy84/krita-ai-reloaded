@@ -233,6 +233,24 @@ class QueuePopup(QMenu):
         cancel_layout.addWidget(self._cancel_all)
         self._layout.addLayout(cancel_layout, 5, 1)
 
+        memory_label = QLabel(_("Memory"), self)
+        self._unload_models = QToolButton(self)
+        self._unload_models.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._unload_models.setText(_("Unload Models"))
+        self._unload_models.setIcon(theme.icon("discard"))
+        self._unload_models.setToolTip(
+            _(
+                "Unload all models from VRAM and RAM on the ComfyUI server."
+                " A running generation finishes first, the next one loads its models again."
+            )
+        )
+        self._unload_models.clicked.connect(root.connection.free_memory)
+        unload_layout = QHBoxLayout()
+        unload_layout.addWidget(self._unload_models)
+        unload_layout.addStretch()
+        self._layout.addWidget(memory_label, 6, 0)
+        self._layout.addLayout(unload_layout, 6, 1)
+
         self._model = root.active_model
 
     def _update_seed_input_enabled(self, *_args):
