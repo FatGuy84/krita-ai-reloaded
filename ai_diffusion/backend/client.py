@@ -426,6 +426,10 @@ class Client(ABC):
         """Unload all models from VRAM/RAM on the server. Returns False if unsupported."""
         return False
 
+    async def vram_usage(self) -> tuple[int, int] | None:
+        """Used and total VRAM of the server's GPU in bytes, or None if unknown."""
+        return None
+
     async def refresh(self):
         pass
 

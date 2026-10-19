@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Any, ClassVar, cast
 
 from krita import Krita
-from PyQt5.QtCore import QEvent, QMetaObject, QSize, Qt, QUrl, pyqtSignal
+from PyQt5.QtCore import QEvent, QMetaObject, QSize, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import (
     QCloseEvent,
     QColor,
@@ -33,6 +33,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QMenu,
     QPlainTextEdit,
+    QProgressBar,
     QPushButton,
     QScrollBar,
     QSizePolicy,
@@ -244,10 +245,22 @@ class QueuePopup(QMenu):
                 " A running generation finishes first, the next one loads its models again."
             )
         )
-        self._unload_models.clicked.connect(root.connection.free_memory)
+        self._unload_models.clicked.connect(self._free_memory)
+        self._vram_bar = QProgressBar(self)
+        self._vram_bar.setRange(0, 1000)
+        self._vram_bar.setTextVisible(True)
+        self._vram_bar.setFixedHeight(self._unload_models.sizeHint().height())
+        self._vram_bar.setToolTip(
+            _("GPU memory in use on the ComfyUI server (includes other applications)")
+        )
+        self._update_vram(None)
+        root.connection.vram_changed.connect(self._update_vram)
+        self._vram_timer = QTimer(self)
+        self._vram_timer.setInterval(2000)
+        self._vram_timer.timeout.connect(root.connection.update_vram)
         unload_layout = QHBoxLayout()
+        unload_layout.addWidget(self._vram_bar, 1)
         unload_layout.addWidget(self._unload_models)
-        unload_layout.addStretch()
         self._layout.addWidget(memory_label, 6, 0)
         self._layout.addLayout(unload_layout, 6, 1)
 
@@ -309,6 +322,29 @@ class QueuePopup(QMenu):
         self._cancel_active.setEnabled(has_active)
         self._cancel_queued.setEnabled(n_queued > 0)
         self._cancel_all.setEnabled(has_active or n_queued > 0)
+
+    def _free_memory(self):
+        root.connection.free_memory()
+        QTimer.singleShot(1000, root.connection.update_vram)
+
+    def _update_vram(self, usage: tuple[int, int] | None):
+        if usage is None:
+            self._vram_bar.setValue(0)
+            self._vram_bar.setFormat(_("VRAM: unknown"))
+            return
+        used, total = usage
+        gb = 1024**3
+        self._vram_bar.setValue(round(used / total * 1000))
+        self._vram_bar.setFormat(f"VRAM {used / gb:.1f} / {total / gb:.1f} GB")
+
+    def showEvent(self, a0):
+        super().showEvent(a0)
+        root.connection.update_vram()
+        self._vram_timer.start()
+
+    def hideEvent(self, a0):
+        self._vram_timer.stop()
+        super().hideEvent(a0)
 
     def _update_resolution_multiplier(self):
         slider_value = round(self.model.resolution_multiplier * 10)

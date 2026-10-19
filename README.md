@@ -112,7 +112,9 @@ Other batch changes:
 * **Unload models**: *Unload Models* in the queue popup (click the queue button)
   frees VRAM and RAM on the ComfyUI server, e.g. before switching to another
   GPU-heavy app. A running generation finishes first; the next job loads its
-  models again. Local ComfyUI only.
+  models again. A bar next to it shows the GPU's current VRAM use (refreshed
+  every 2 s while the popup is open; counts other apps on the GPU too).
+  Local ComfyUI only.
 * **Preview while generating**: intermediate sampler results show on the canvas
   in the preview layer, replaced by the real result when the job finishes.
   Toggle with the eye button next to Pause (or Settings → *Preview While Generating*).

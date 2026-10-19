@@ -568,6 +568,14 @@ class ComfyClient(Client):
         await self._post("free", {"unload_models": True, "free_memory": True})
         return True
 
+    async def vram_usage(self):
+        # vram_free is what the driver reports, so it includes other apps using the GPU
+        device = (await self._get("system_stats", timeout=10))["devices"][0]
+        total = device.get("vram_total", 0)
+        if not total or device.get("type") == "cpu":
+            return None
+        return total - device.get("vram_free", 0), total
+
     async def cancel(self, job_ids: Iterable[str]):
         # Make sure changes to all queues are processed before suspending this
         # function, otherwise it may interfere with subsequent calls to enqueue.

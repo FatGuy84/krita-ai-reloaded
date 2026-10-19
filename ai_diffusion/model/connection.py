@@ -45,6 +45,7 @@ class Connection(QObject, ObservableProperties):
     paused = Property(False, setter="set_paused")
 
     paused_changed = pyqtSignal(bool)
+    vram_changed = pyqtSignal(object)  # (used, total) in bytes, or None
     state_changed = pyqtSignal(ConnectionState)
     error_changed = pyqtSignal(str)
     progress_changed = pyqtSignal(tuple)
@@ -180,6 +181,18 @@ class Connection(QObject, ObservableProperties):
                     util.client_logger.warning(f"Failed to unload models: {e}")
 
         eventloop.run(_free())
+
+    def update_vram(self):
+        async def _update():
+            usage = None
+            if client := self.client_if_connected:
+                try:
+                    usage = await client.vram_usage()
+                except Exception as e:
+                    util.client_logger.warning(f"Failed to query VRAM usage: {e}")
+            self.vram_changed.emit(usage)
+
+        eventloop.run(_update())
 
     def cancel(self, job_ids: Iterable[str]):
         eventloop.run(self.client.cancel(job_ids))
