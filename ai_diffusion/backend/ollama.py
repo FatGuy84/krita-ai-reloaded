@@ -300,7 +300,8 @@ def parse_terms(text: str) -> list[str]:
 # LoRA tags, file wildcards, random and sequential wildcard groups. These carry meaning
 # for the plugin and get mangled if the model is allowed to rewrite them.
 # File wildcards are matched like text.pattern_file_wildcard: names may contain '_', '/'.
-_protected_re = re.compile(r"<lora:[^>]*>|__[\w\-./]+?__|\[\[.*?\]\]|\{[^{}]*\|[^{}]*\}")
+# DOTALL: inserted groups put brackets and pipes on their own lines (text.format_option_group).
+_protected_re = re.compile(r"<lora:[^>]*>|__[\w\-./]+?__|\[\[.*?\]\]|\{[^{}]*\|[^{}]*\}", re.DOTALL)
 
 
 @dataclass
