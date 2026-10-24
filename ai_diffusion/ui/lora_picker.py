@@ -72,7 +72,7 @@ _NSFW_SAFE = "safe"
 _NSFW_HIDE_EXPLICIT = "hide_explicit"
 _KNOWN_ARCHES = [
     "sd15", "sdxl", "illu", "sd3", "flux", "flux_k",
-    "chroma", "qwen", "anima", "zimage", "ernie", "krea2",
+    "chroma", "qwen", "anima", "zimage", "ernie", "krea2", "moss",
 ]
 # full names for the base-model filter, matching the labels in the style editor
 _ARCH_LABELS = {
@@ -88,6 +88,7 @@ _ARCH_LABELS = {
     "zimage": "Z-Image",
     "ernie": "ERNIE Image",
     "krea2": "Krea 2",
+    "moss": "MOSS-Image",
 }
 _VIDEO_EXTENSIONS = (".mp4", ".webm", ".mov")
 

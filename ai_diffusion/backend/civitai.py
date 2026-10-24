@@ -38,6 +38,7 @@ civitai_base_models = {
     "zimage": ["ZImageTurbo"],
     "ernie": ["Ernie"],
     "krea2": ["Krea 2"],
+    "moss": [],
 }
 
 # CivitAI model types which can hold a LoRA-style file. LoCon/DoRA load through the

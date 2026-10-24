@@ -112,6 +112,7 @@ _BASE_MODEL_MAP = [
     ("zimage", "zimage"),
     ("ernie", "ernie"),
     ("krea", "krea2"),
+    ("moss", "moss"),
 ]
 
 
