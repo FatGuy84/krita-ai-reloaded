@@ -645,6 +645,17 @@ To use them, copy the `.json` files from `custom_workflows/` into
 `%APPDATA%\krita\ai_diffusion\workflows\`, then pick the workflow from the
 Custom workspace's workflow dropdown in Krita.
 
+Krea 2 also works as an **edit model in the regular workspaces** (ported from
+upstream [PR #2589](https://github.com/Acly/krita-ai-diffusion/pull/2589),
+without its managed-install parts). With the same node pack installed and the
+Identity Edit LoRA in `models/loras`, pick the **Krea 2 Identity Edit** style
+(or Krea 2 Turbo, which links to it) and use Edit / Refine as with Flux 2:
+the canvas is the first reference, and up to one Reference control layer
+adds a second — its strength sets the reference boost. `<layer:Name>` in the
+prompt is rewritten to `image N`, as for Flux 2. Without the node pack,
+Krea 2 edits fail with a missing-node error from ComfyUI; plain Krea 2
+text-to-image is unaffected.
+
 ## Installation
 
 Same as upstream — see the [Plugin Installation Guide](https://docs.interstice.cloud/installation).

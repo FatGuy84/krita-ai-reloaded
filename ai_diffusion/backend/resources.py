@@ -204,7 +204,7 @@ class Arch(Enum):
 
     @property
     def supports_edit(self):  # includes text-to-image models that can also edit
-        return self.is_edit or self.is_flux2
+        return self.is_edit or self.is_flux2 or self is Arch.krea2
 
     @property
     def is_sdxl_like(self):
