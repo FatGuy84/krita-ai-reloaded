@@ -1580,6 +1580,7 @@ class GenerationWidget(QWidget):
                 bind_toggle(model, "region_only", self.region_mask_button),
                 model.inpaint.mode_changed.connect(self.update_generate_options),
                 model.strength_changed.connect(self.update_generate_options),
+                model.batch_count_changed.connect(self.update_generate_options),
                 model.document.selection_bounds_changed.connect(self.update_generate_options),
                 # DLSS5 availability (and with it the arrow menu) depends on server nodes
                 root.connection.models_changed.connect(self.update_generate_options),
@@ -1855,6 +1856,7 @@ class GenerationWidget(QWidget):
                 else:
                     icon = "edit"
 
+        text += f" ({self.model.batch_count})"
         self.generate_button.operation = text
         self.generate_button.setIcon(theme.icon(icon))
 
