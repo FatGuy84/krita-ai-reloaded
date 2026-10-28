@@ -562,10 +562,17 @@ much faster.
   live, from small (fit more on screen) to large (see detail without
   clicking through). Thumbnails are always regenerated from the
   full-resolution result, so they stay sharp at any size.
-* **Generation time** tracked per job and shown in its tooltip (wall-clock
-  from the first progress event to completion). The tooltip also shows the
-  image size in pixels and how much space the result takes in the document
-  history.
+* **Generation time** tracked per job and shown in its tooltip, e.g.
+  "13 s". It counts from when the server starts executing the job to
+  completion - time spent waiting in the server queue (or uploading LoRAs) is
+  left out. Stored with the history, older entries simply show none. The
+  tooltip also shows the image size in pixels and how much space the result
+  takes in the document history.
+* **Model name in layer names**: applied results are named after the model
+  that made them, e.g. `[flux1-dev] [Generated] a red fox in snow (1234)` -
+  folder, file extension and precision tags like `fp8` or `Q8_0` are dropped.
+  Handy when comparing models side by side in the layer stack. Turn it off in
+  Settings > Interface > "Model Name in Layer Names".
 * **Large results are kept in the document**: results wider or taller than
   WebP allows (16383 px) are stored as JPEG (PNG with transparency) instead
   of being dropped, one failed store no longer stops all later results from

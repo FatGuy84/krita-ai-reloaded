@@ -80,6 +80,13 @@ from .widget import (
 )
 
 
+def _format_duration(seconds: float):
+    if seconds < 10:
+        return f"{seconds:.1f} s"
+    minutes, seconds = divmod(round(seconds), 60)
+    return f"{minutes} min {seconds:02} s" if minutes else f"{seconds} s"
+
+
 def _format_bytes(size: int):
     if size >= 1024 * 1024:
         return f"{size / (1024 * 1024):.1f} MB"
@@ -380,8 +387,7 @@ class HistoryWidget(QListWidget):
                     control_text.append(t)
                 value = " | ".join(control_text)
             if key == "duration" and isinstance(value, (int, float)):
-                minutes, seconds = divmod(value, 60)
-                value = f"{int(minutes)}m {seconds:.1f}s" if minutes else f"{seconds:.1f}s"
+                value = _format_duration(value)
             if key == "custom_inpaint" and isinstance(value, dict):
                 parts = []
                 if value.get("seamless"):

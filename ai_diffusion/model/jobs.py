@@ -225,11 +225,14 @@ class JobQueue(QObject):
             self._memory_usage += results.size / (1024**2)
             self.prune(keep=job)
 
-    def notify_started(self, job: Job):
+    def notify_started(self, job: Job, executing=True):
         if job.state is not JobState.executing:
             job.state = JobState.executing
-            job.started_at = datetime.now(timezone.utc)
             self.count_changed.emit()
+        if not executing:  # waiting in the server queue or uploading, not generating yet
+            job.started_at = None
+        elif job.started_at is None:
+            job.started_at = datetime.now(timezone.utc)
 
     def notify_finished(self, job: Job):
         job.state = JobState.finished

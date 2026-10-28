@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 import uuid
 import weakref
@@ -773,7 +774,7 @@ class DocumentModel(QObject, ObservableProperties):
             return
 
         if message.event is ClientEvent.queued:
-            self.jobs.notify_started(job)
+            self.jobs.notify_started(job, executing=False)
             self.progress = -1
             self.progress_changed.emit(-1)
             self.progress_status = _("Waiting for server")
@@ -783,7 +784,7 @@ class DocumentModel(QObject, ObservableProperties):
             self.progress = message.progress
             self.progress_status = message.status or _("Generating")
         elif message.event is ClientEvent.upload:
-            self.jobs.notify_started(job)
+            self.jobs.notify_started(job, executing=False)
             self.progress_kind = ProgressKind.upload
             self.progress = message.progress
             self.progress_status = _("Uploading")
@@ -921,6 +922,7 @@ class DocumentModel(QObject, ObservableProperties):
             if behavior is ApplyBehavior.replace:
                 self.layers.update_layer_image(self.layers.active, image, bounds)
             else:
+                prefix = _model_name_prefix(params) + prefix
                 name = f"{prefix}{trim_text(params.name, 200)} ({params.seed})"
                 pos = self.layers.active if behavior is ApplyBehavior.layer_active else None
                 self.layers.create(name, image, bounds, above=pos)
@@ -942,7 +944,7 @@ class DocumentModel(QObject, ObservableProperties):
         behavior: ApplyRegionBehavior,
         prefix="",
     ):
-        name = f"{prefix}{job_region.prompt} ({params.seed})"
+        name = f"{_model_name_prefix(params)}{prefix}{job_region.prompt} ({params.seed})"
         region_layer = self.layers.find(QUuid(job_region.layer_id)) or self.layers.root
         # a previous apply from the same batch may have already created groups and re-linked
         region_layer = Region.link_target(region_layer)
@@ -1844,6 +1846,30 @@ def _dlss5_metadata(input: WorkflowInput, area: str):
     Eagle exports and "Info to Clipboard" record them. `tiles` is 0 for a single pass."""
     tiles = workflow.dlss5_tile_count(input.extent.input)
     return {"dlss5": asdict(ensure(input.dlss5)) | {"area": area, "tiles": tiles}}
+
+
+_model_file_extensions = (".safetensors", ".ckpt", ".gguf", ".sft", ".pt", ".pth", ".bin")
+_model_file_suffix = re.compile(
+    r"[-_.](fp8|fp16|bf16|fp32|e4m3fn|e5m2|nf4|q\d(_k)?(_[sml01])?|pruned|emaonly|ema)$",
+    re.IGNORECASE,
+)
+
+
+def _short_model_name(checkpoint: str):
+    """Eg. "flux1-dev" for "flux/flux1-dev-Q8_0.gguf" - folder, extension and precision dropped."""
+    stem = checkpoint.replace("\\", "/").rsplit("/", 1)[-1]
+    if (dot := stem.rfind(".")) > 0 and stem[dot:].lower() in _model_file_extensions:
+        stem = stem[:dot]
+    while (shorter := _model_file_suffix.sub("", stem)) != stem and shorter:
+        stem = shorter
+    return trim_text(stem, 40)
+
+
+def _model_name_prefix(params: JobParams):
+    checkpoint = params.metadata.get("checkpoint")
+    if not settings.layer_name_model_prefix or not isinstance(checkpoint, str) or not checkpoint:
+        return ""
+    return f"[{_short_model_name(checkpoint)}] "
 
 
 def _dlss5_name_prefix(metadata: dict[str, Any]):

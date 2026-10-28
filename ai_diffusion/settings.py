@@ -327,6 +327,13 @@ class Settings(QObject):
         _("Subfolder below the download folder, e.g. Illustrious/character"),
     )
 
+    layer_name_model_prefix: bool
+    _layer_name_model_prefix = Setting(
+        _("Model Name in Layer Names"),
+        True,
+        _("Start the name of applied result layers with the model, e.g. [flux1-dev] prompt"),
+    )
+
     new_seed_after_apply: bool
     _new_seed_after_apply = Setting(
         _("Live: New Seed after Apply"),
