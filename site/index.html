@@ -1,0 +1,732 @@
+<title>Krita AI Reloaded</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A usability-focused fork of the Krita AI Diffusion plugin: sequential wildcards, visual LoRA and recipe browsers, Loop Generate, local prompt tools and a history you can search and rate.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column of feature bands, each pairing a short claim with the real plugin surface
+   (an interactive docker mock in the hero, recorded GIFs below). Tokens from branding/design-system/tokens.json. */
+:root {
+  --surface-000: #0e0b07;
+  --surface-100: #17120c;
+  --surface-200: #241c13;
+  --surface-300: #2e2418;
+  --ink: #f6ecdd;
+  --ink-muted: #c4b49c;
+  --amber-400: #ffb020;
+  --amber-300: #ffc24d;
+  --orange-600: #ff6a00;
+  --on-amber: #1b1006;
+  --border: #7e6749;
+  --hairline: #3a2e20;
+  --focus-ring: #ffb020;
+  --success: #4ec9a0;
+  --danger: #ff8a7a;
+  --mark: #ffb020;
+  --font-sans: Barlow, "Segoe UI", system-ui, sans-serif;
+  --font-cond: "Barlow Condensed", Barlow, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 18px;
+  --wrap: 1160px;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --surface-000: #fffbf4; --surface-100: #fdf6ea; --surface-200: #f6ebd9; --surface-300: #efe0c8;
+    --ink: #1b140c; --ink-muted: #5b4b36; --border: #8a6e4a; --hairline: #e2d2b8;
+    --focus-ring: #9a4a00; --success: #0f7a5a; --danger: #b3261e; --mark: #b33b0a;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --surface-000: #fffbf4; --surface-100: #fdf6ea; --surface-200: #f6ebd9; --surface-300: #efe0c8;
+  --ink: #1b140c; --ink-muted: #5b4b36; --border: #8a6e4a; --hairline: #e2d2b8;
+  --focus-ring: #9a4a00; --success: #0f7a5a; --danger: #b3261e; --mark: #b33b0a;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+body {
+  background: var(--surface-100);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
+code, kbd { font-family: var(--font-mono); font-size: 0.88em; }
+code { background: var(--surface-200); border: 1px solid var(--hairline); border-radius: 4px; padding: 0 0.3em; white-space: nowrap; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+p { margin: 0; }
+
+.wrap { max-width: var(--wrap); margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.overline { font-family: var(--font-cond); font-weight: 700; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
+.muted { color: var(--ink-muted); }
+
+/* header */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface-000); }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--surface-000); border-bottom: 1px solid var(--hairline); }
+.top .wrap { display: flex; align-items: center; gap: var(--space-6); height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+.brand img { width: 32px; height: 32px; }
+.brand b { font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+.brand span { font-family: var(--font-cond); font-size: 11px; letter-spacing: 0.14em; color: var(--ink-muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+.nav { display: flex; gap: var(--space-6); margin-left: var(--space-4); }
+.nav a { text-decoration: none; color: var(--ink-muted); font-weight: 500; font-size: 15px; }
+.nav a:hover { color: var(--ink); }
+.top .spacer { flex: 1; }
+.top .support { font-size: 15px; color: var(--ink-muted); text-decoration: none; }
+.top .support:hover { color: var(--ink); }
+
+.btn { display: inline-flex; align-items: center; gap: 8px; font: 600 15px/1 var(--font-sans); text-decoration: none; border-radius: var(--radius-md); padding: 11px 18px; border: 1px solid var(--border); background: var(--surface-200); color: var(--ink); cursor: pointer; }
+.btn:hover { background: var(--surface-300); }
+.btn-amber { background: var(--amber-400); border-color: var(--amber-400); color: var(--on-amber); }
+.btn-amber:hover { background: var(--amber-300); }
+.btn-lg { font-size: 17px; padding: 15px 24px; }
+.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* hero */
+.hero { padding-block: 64px 40px; }
+.hero-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: end; }
+.hero h1 { font-weight: 800; font-size: clamp(40px, 6.2vw, 76px); line-height: 0.98; letter-spacing: -0.035em; }
+.hero h1 .hl { display: inline; background: var(--amber-400); color: var(--on-amber); padding: 0 0.12em; box-decoration-break: clone; -webkit-box-decoration-break: clone; border-radius: 4px; }
+.hero .lede { margin-top: var(--space-6); font-size: 19px; max-width: 34em; color: var(--ink-muted); }
+.hero-cta { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.hero-cta .meta { font-size: 14px; color: var(--ink-muted); line-height: 1.5; }
+.hero-cta .meta b { color: var(--ink); font-weight: 600; }
+
+/* docker mock */
+.stage { margin-top: 48px; display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-000); overflow: hidden; }
+.docker { background: var(--surface-200); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
+.dock-title { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--surface-300); border-bottom: 1px solid var(--hairline); font-size: 13px; font-weight: 600; }
+.dock-title .dots { display: flex; gap: 6px; }
+.dock-title .dots i { width: 10px; height: 10px; border: 1px solid var(--border); border-radius: 2px; display: block; }
+.dock-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 9px; background: var(--surface-100); white-space: nowrap; }
+.chip.style { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.chip .sw { width: 14px; height: 14px; border-radius: 3px; background: linear-gradient(135deg, var(--amber-300), var(--orange-600)); flex-shrink: 0; }
+.tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.tools button { font: 500 12px/1 var(--font-sans); color: var(--ink); background: var(--surface-100); border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 6px 9px; cursor: pointer; }
+.tools button:hover { border-color: var(--border); }
+.tools button[aria-pressed="true"] { border-color: var(--mark); }
+#prompt { width: 100%; min-height: 112px; resize: vertical; font: 13px/1.55 var(--font-mono); color: var(--ink); background: var(--surface-100); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 10px; }
+.neg { font: 12px/1.4 var(--font-mono); color: var(--ink-muted); background: var(--surface-100); border: 1px dashed var(--hairline); border-radius: var(--radius-sm); padding: 7px 10px; }
+.batch { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.batch label { color: var(--ink-muted); }
+#count { width: 76px; font: 500 14px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); background: var(--surface-100); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; }
+.icon-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-100); color: var(--ink); cursor: pointer; font: 600 12px/1 var(--font-mono); }
+.icon-btn:hover { background: var(--surface-300); }
+.icon-btn[aria-pressed="true"] { background: var(--amber-400); color: var(--on-amber); border-color: var(--amber-400); }
+.icon-btn svg { width: 16px; height: 16px; }
+.gen-row { display: flex; gap: 6px; }
+#generate { flex: 1; justify-content: center; }
+.progress { height: 6px; border-radius: 3px; background: var(--surface-100); border: 1px solid var(--hairline); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--amber-400); transition: width 0.12s linear; }
+.status { font-size: 12px; color: var(--ink-muted); min-height: 1.4em; }
+
+.items { padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.items-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.formula { font: 500 13px/1.3 var(--font-mono); color: var(--ink-muted); }
+.formula b { color: var(--ink); font-weight: 600; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--hairline); border-radius: var(--radius-md); overflow: hidden; }
+.list li { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 8px 12px; border-top: 1px solid var(--hairline); font-size: 13px; background: var(--surface-100); }
+.list li:first-child { border-top: 0; }
+.list li .n { font: 500 12px var(--font-mono); color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.list li .p { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.list li .p mark { background: transparent; color: var(--ink); border-bottom: 2px solid var(--mark); padding: 0 1px; }
+.list li .lora { color: var(--ink-muted); }
+.list li .st { font-size: 12px; color: var(--ink-muted); white-space: nowrap; }
+.list li.done .st { color: var(--success); }
+.list li.run { background: var(--surface-300); }
+.list li.more { display: block; color: var(--ink-muted); text-align: center; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; }
+.presets button { font: 500 12px/1 var(--font-mono); color: var(--ink); background: transparent; border: 1px solid var(--hairline); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.presets button:hover { border-color: var(--border); }
+.caption { font-size: 14px; color: var(--ink-muted); margin-top: var(--space-3); max-width: 60em; }
+
+/* sections */
+section.band { padding-block: 88px; border-top: 1px solid var(--hairline); }
+section.band.alt { background: var(--surface-000); }
+.sec-head { max-width: 46em; display: flex; flex-direction: column; gap: var(--space-3); }
+.sec-head h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.05; font-weight: 700; letter-spacing: -0.025em; }
+.sec-head p { color: var(--ink-muted); font-size: 18px; }
+
+.glance { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.glance > div { padding: 24px; border-left: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 14px; background: var(--surface-200); min-width: 0; }
+.glance > div:first-child { border-left: 0; }
+.glance h3 { font-family: var(--font-cond); font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.glance h3::before { content: ""; width: 10px; height: 10px; background: var(--amber-400); border-radius: 2px; }
+.glance ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 16px; }
+.glance li { padding-left: 16px; position: relative; }
+.glance li::before { content: "–"; position: absolute; left: 0; color: var(--ink-muted); }
+
+.split { margin-top: 48px; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 48px; align-items: start; }
+.split.flip { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); }
+.split.flip .media { order: -1; }
+.copy { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.copy h3 { font-size: 26px; line-height: 1.15; font-weight: 700; letter-spacing: -0.015em; }
+.copy p { color: var(--ink-muted); }
+.copy p strong { color: var(--ink); font-weight: 600; }
+.media { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.media img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-200); }
+.media figcaption { font-size: 14px; color: var(--ink-muted); }
+
+.syntax { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0; border: 1px solid var(--hairline); border-radius: var(--radius-md); overflow: hidden; font-size: 15px; }
+.syntax > * { padding: 10px 14px; border-top: 1px solid var(--hairline); background: var(--surface-200); }
+.syntax > :nth-child(-n+2) { border-top: 0; }
+.syntax dt { font-family: var(--font-mono); font-size: 14px; white-space: nowrap; border-right: 1px solid var(--hairline); }
+.syntax dd { margin: 0; color: var(--ink-muted); }
+
+.controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ctl { border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 14px 16px; background: var(--surface-200); display: flex; flex-direction: column; gap: 6px; }
+.ctl b { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.ctl b .g { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 5px; font: 600 11px var(--font-mono); color: var(--ink); }
+.ctl span { font-size: 14px; color: var(--ink-muted); line-height: 1.45; }
+
+.browsers { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.br { border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 20px; background: var(--surface-200); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.br .tag { align-self: flex-start; font: 500 12px/1 var(--font-mono); border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; color: var(--ink-muted); }
+.br h3 { font-size: 20px; font-weight: 700; }
+.br p { font-size: 15px; color: var(--ink-muted); }
+.br .needs { margin-top: auto; padding-top: 8px; font-size: 13px; color: var(--ink-muted); border-top: 1px dashed var(--hairline); }
+
+.menu { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-200); overflow: hidden; font-size: 15px; }
+.menu-head { padding: 10px 14px; background: var(--surface-300); border-bottom: 1px solid var(--hairline); display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.menu-head .ai { font: 700 11px/1 var(--font-mono); background: var(--amber-400); color: var(--on-amber); border-radius: 4px; padding: 4px 6px; }
+.menu ul { list-style: none; margin: 0; padding: 6px 0; }
+.menu li { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr); gap: 16px; padding: 8px 14px; }
+.menu li + li { border-top: 1px solid var(--hairline); }
+.menu li b { font-weight: 600; }
+.menu li span { color: var(--ink-muted); font-size: 14px; }
+.menu li.sep { border-top: 1px solid var(--border); }
+
+.req { margin-top: 40px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.req > div { padding: 22px; border-left: 1px solid var(--hairline); background: var(--surface-200); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.req > div:first-child { border-left: 0; }
+.req b { font-size: 18px; font-weight: 600; }
+.req span { font-size: 14px; color: var(--ink-muted); }
+
+.steps { margin: 40px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: step; }
+.steps li { counter-increment: step; border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 20px; background: var(--surface-200); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.steps li::before { content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--amber-400); color: var(--on-amber); font-weight: 700; font-size: 15px; }
+.steps b { font-size: 18px; font-weight: 600; }
+.steps p { font-size: 15px; color: var(--ink-muted); }
+.path { display: block; font: 12.5px/1.5 var(--font-mono); background: var(--surface-100); border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 8px 10px; overflow-x: auto; white-space: nowrap; color: var(--ink); }
+
+.optional { margin-top: 24px; border: 1px solid var(--hairline); border-radius: var(--radius-md); overflow-x: auto; }
+.optional table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 520px; }
+.optional th, .optional td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--hairline); vertical-align: top; }
+.optional thead th { border-top: 0; background: var(--surface-300); font-family: var(--font-cond); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); }
+.optional td:first-child { font-weight: 600; white-space: nowrap; }
+.optional td { color: var(--ink-muted); }
+.optional td:first-child { color: var(--ink); }
+
+.faq { margin-top: 40px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.faq details { border: 1px solid var(--hairline); border-radius: var(--radius-md); background: var(--surface-200); }
+.faq summary { cursor: pointer; padding: 16px 18px; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font: 500 20px/1 var(--font-mono); color: var(--ink-muted); }
+.faq details[open] summary::after { content: "−"; }
+.faq details > div { padding: 0 18px 18px; color: var(--ink-muted); font-size: 15px; display: flex; flex-direction: column; gap: 10px; }
+
+.cta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 40px; }
+.cta > div { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; background: var(--surface-200); display: flex; flex-direction: column; gap: 16px; align-items: flex-start; min-width: 0; }
+.cta h3 { font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
+.cta p { color: var(--ink-muted); }
+.cta .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+footer { border-top: 1px solid var(--hairline); padding-block: 32px 48px; background: var(--surface-000); font-size: 14px; color: var(--ink-muted); }
+footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wrap: wrap; align-items: center; }
+footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
+footer a { color: var(--ink-muted); }
+footer a:hover { color: var(--ink); }
+
+@media (max-width: 980px) {
+  .nav { display: none; }
+  .hero-grid, .split, .split.flip, .cta { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .split.flip .media { order: 0; }
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .docker { border-right: 0; border-bottom: 1px solid var(--border); }
+  .browsers, .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .req { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .req > div:nth-child(3) { border-left: 0; }
+  .req > div:nth-child(n+3) { border-top: 1px solid var(--hairline); }
+}
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .top .support { display: none; }
+  .hero { padding-block: 40px 24px; }
+  section.band { padding-block: 64px; }
+  .glance, .browsers, .steps, .req, .faq, .controls { grid-template-columns: minmax(0, 1fr); }
+  .glance > div, .req > div { border-left: 0; border-top: 1px solid var(--hairline); }
+  .glance > div:first-child, .req > div:first-child { border-top: 0; }
+  .menu li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .list li { grid-template-columns: 34px minmax(0, 1fr); }
+  .list li .st { grid-column: 2; }
+  .cta > div { padding: 24px; }
+}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Krita AI Reloaded, back to top">
+      <img src="logo-128.png" alt="" width="32" height="32">
+      <b>Krita AI Reloaded</b><span>FORK</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#wildcards">Wildcards</a>
+      <a href="#browsers">Browsers</a>
+      <a href="#prompt-ai">Prompt AI</a>
+      <a href="#history">History</a>
+      <a href="#install">Install</a>
+    </nav>
+    <div class="spacer"></div>
+    <a class="support" href="#support">Support</a>
+    <a class="btn btn-amber" href="https://github.com/FatGuy84/krita-ai-reloaded/releases/latest">Download</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <p class="overline">The Krita AI Diffusion plugin, fork edition</p>
+          <h1 style="margin-top:14px">Generate faster. Browse visually. <span class="hl">Run it again.</span></h1>
+          <p class="lede">The plugin you already paint with, with the clicks taken out of prompting, LoRA management and batch generation. Same ComfyUI backend, same docker, built on upstream v1.53.0.</p>
+        </div>
+        <div class="hero-cta">
+          <a class="btn btn-amber btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded/releases/latest">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            Download the plugin
+          </a>
+          <p class="meta"><b>v1.53.0-reloaded.4</b>, released 7 October 2026<br>Free and open source, GPL-3.0. Windows, macOS and Linux, wherever Krita runs.</p>
+          <a class="btn" href="https://github.com/FatGuy84/krita-ai-reloaded">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6-6 6 6 6"/><path d="m16 6 6 6-6 6"/></svg>
+            Source on GitHub
+          </a>
+        </div>
+      </div>
+
+      <div class="stage" role="group" aria-label="Interactive demo of sequential wildcards">
+        <div class="docker">
+          <div class="dock-title"><span>AI Image Generation</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+          <div class="dock-body">
+            <div class="row">
+              <span class="chip style"><span class="sw" aria-hidden="true"></span>Illustrious XL · Cinematic</span>
+              <span class="chip">1024 × 1024</span>
+            </div>
+            <div class="tools" aria-label="Prompt toolbar">
+              <button type="button" data-insert="<lora:film_grain:0.6>">LoRA</button>
+              <button type="button" data-insert="__hairstyles__">Wildcards</button>
+              <button type="button" data-insert="[[dawn|noon|dusk]]">[[a|b]]</button>
+              <button type="button" id="ai-btn">AI ▾</button>
+            </div>
+            <label for="prompt" class="overline" style="font-size:11px">Prompt</label>
+            <textarea id="prompt" spellcheck="false">[[black|white]] cat, [[sitting|jumping]], on a windowsill, soft morning light</textarea>
+            <div class="neg">blurry, lowres, watermark</div>
+            <div class="batch">
+              <label for="count">Batch</label>
+              <input id="count" type="number" min="1" max="1000" value="4">
+              <button type="button" class="icon-btn" id="fit" title="Set batch count to the number of combinations" aria-label="Set batch count to the number of combinations">a×b</button>
+              <span class="muted" style="margin-left:auto">up to 1000</span>
+            </div>
+            <div class="gen-row">
+              <button type="button" class="btn btn-amber" id="generate">Generate ×4</button>
+              <button type="button" class="icon-btn" id="loop" aria-pressed="false" title="Loop Generate" aria-label="Loop Generate">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
+              </button>
+              <button type="button" class="icon-btn" id="pause" aria-pressed="false" title="Pause queue" aria-label="Pause queue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 5v14"/><path d="M15 5v14"/></svg>
+              </button>
+            </div>
+            <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+            <p class="status" id="status" aria-live="polite">Ready.</p>
+          </div>
+        </div>
+        <div class="items">
+          <div class="items-head">
+            <p class="overline">Batch items, as the plugin evaluates them</p>
+            <p class="formula" id="formula"></p>
+          </div>
+          <ol class="list" id="list"></ol>
+          <div class="presets">
+            <span class="muted">Try:</span>
+            <button type="button" data-preset="[[black|white]] cat, [[sitting|jumping]], on a windowsill, soft morning light">two groups</button>
+            <button type="button" data-preset="portrait of a knight, [[<lora:ink_wash:0.8> ink wash|<lora:oil_paint:0.7> oil painting|flat colour]], three-quarter view">LoRA per item</button>
+            <button type="button" data-preset="a lighthouse on a cliff at [[dawn|noon|dusk|night]], [[calm|stormy]] sea, wide shot">4 × 2</button>
+            <button type="button" data-preset="a red fox in the snow, {sleeping|running|watching}">random only</button>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Edit the prompt. Each <code>[[a|b|c]]</code> group cycles through its options across the batch, and several groups multiply into every combination. The <b>a×b</b> button sets the batch count for you. Upstream only has random <code>{a|b|c}</code>.</p>
+    </div>
+  </section>
+
+  <section class="band" id="glance">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">At a glance</p>
+        <h2>Everything upstream does, plus the parts that took too many clicks.</h2>
+        <p>This fork adds UX and power-user features on top of Acly's plugin and leaves the inference core alone. Your styles, servers and workflows keep working.</p>
+      </div>
+      <div class="glance">
+        <div>
+          <h3>Browse</h3>
+          <ul>
+            <li>LoRA, Recipe, Style, Checkpoint and Wildcard pickers with live search, previews and favorites</li>
+            <li>CivitAI and AnimaDex browsers: search and download without leaving Krita</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Batch</h3>
+          <ul>
+            <li>Sequential <code>[[a|b]]</code> wildcards and Cartesian batches, up to 1000 per run</li>
+            <li>Loop Generate, Strength Sweep, Pause queue, live preview</li>
+            <li>Local prompt tools through Ollama</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Organise</h3>
+          <ul>
+            <li>History with search, favorites, 1–5 star ratings and filters</li>
+            <li>Save to Eagle, copy image to clipboard</li>
+            <li>Faster startup through disk-cached model lists</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="wildcards">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">Sequential wildcards and batch control</p>
+        <h2>Run through a fixed set of variations instead of hoping the dice land right.</h2>
+      </div>
+      <div class="split">
+        <div class="copy">
+          <dl class="syntax">
+            <dt>[[a|b|c]]</dt><dd>Item 1 gets <code>a</code>, item 2 gets <code>b</code>, item 3 gets <code>c</code>, item 4 wraps back to <code>a</code>.</dd>
+            <dt>[[a|b]] … [[x|y]]</dt><dd>Several groups combine into every pairing across the batch.</dd>
+            <dt>__name__</dt><dd>A random line from <code>wildcards/name.txt</code>, re-read every time you generate.</dd>
+            <dt>{a|b|c}</dt><dd>Upstream's random pick, still there.</dd>
+          </dl>
+          <p><strong>LoRA tags switch per item.</strong> Put <code>&lt;lora:name:0.8&gt;</code> inside a group and each image in the batch gets its own LoRA set. Upstream would apply whatever the first evaluation picked to all of them.</p>
+          <div class="controls">
+            <div class="ctl"><b><span class="g" aria-hidden="true">↻</span>Loop Generate</b><span>Enqueues another batch every time the queue empties, until you turn it off. Turns itself off if a generation fails.</span></div>
+            <div class="ctl"><b><span class="g" aria-hidden="true">⇅</span>Strength Sweep</b><span>From 40% to 75% in steps of 5, with a fixed seed, so strength is the only difference.</span></div>
+            <div class="ctl"><b><span class="g" aria-hidden="true">II</span>Pause queue</b><span>The running image finishes, queued batches wait until you click again.</span></div>
+            <div class="ctl"><b><span class="g" aria-hidden="true">GB</span>Unload Models</b><span>Frees VRAM on the ComfyUI server, with a live bar of current GPU use.</span></div>
+          </div>
+        </div>
+        <figure class="media">
+          <img src="media/demo-wildcards.gif" alt="Krita docker: a prompt with sequential wildcards, the a×b button setting the batch count, and the results arriving in the history" loading="lazy">
+          <figcaption>Sequential wildcards, auto batch count and preview size, recorded in Krita.</figcaption>
+        </figure>
+      </div>
+      <div class="split flip">
+        <div class="copy">
+          <h3>Leave it running overnight.</h3>
+          <p>The circular-arrow button next to Generate starts a batch at once and queues the next one whenever the queue runs dry. Combined with a sequential group it sweeps a whole wildcard file, then starts over with new seeds.</p>
+          <p>Previews of the sampler's intermediate steps show on the canvas while it works, and are replaced by the real result when the job finishes.</p>
+        </div>
+        <figure class="media">
+          <img src="media/demo-loop-generate.gif" alt="Loop Generate toggled on, batches enqueuing one after another in the queue" loading="lazy">
+          <figcaption>Loop Generate keeps enqueuing batches until you toggle it off.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="browsers">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">Browsers</p>
+        <h2>Pick LoRAs by looking at them, not by remembering file names.</h2>
+        <p>Every list that used to be a long dropdown is now a searchable, non-modal picker with previews. They stay open beside the canvas while you work.</p>
+      </div>
+      <div class="split">
+        <div class="copy">
+          <h3>LoRA Browser</h3>
+          <p>Thumbnails load as you scroll, so hundreds of LoRAs open without a stall, video previews included. Filter by tag and base model, sort by name or date added, and insert trigger words with one click.</p>
+          <p>Favorites sync both ways with <strong>ComfyUI-Lora-Manager</strong>. A small badge in each thumbnail tells you whether CivitAI's licence allows commercial use of the images you make with it.</p>
+          <p>Select several and insert them as one <code>[[…]]</code> group to compare them in a single batch.</p>
+        </div>
+        <figure class="media">
+          <img src="media/demo-lora-browser.gif" alt="LoRA browser with preview thumbnails: several LoRAs selected and inserted as a wildcard group" loading="lazy">
+          <figcaption>Multi-select, insert as a wildcard group, add to the prompt.</figcaption>
+        </figure>
+      </div>
+      <div class="browsers">
+        <div class="br"><span class="tag">Recipe</span><h3>Recipe Browser</h3><p>Lora Manager's saved prompt and LoRA stacks. Add to the prompt or replace it, with missing LoRAs flagged.</p><p class="needs">Needs ComfyUI-Lora-Manager</p></div>
+        <div class="br"><span class="tag">Style</span><h3>Style Picker</h3><p>Hundreds of presets with live search and a base-model filter. Create styles straight from your checkpoints.</p><p class="needs">Built in</p></div>
+        <div class="br"><span class="tag">__name__</span><h3>Wildcards</h3><p>Browse, edit and create wildcard files. Insert as a live reference, a random group or a sequential group.</p><p class="needs">Built in. Drop in sd-wildcards as is.</p></div>
+        <div class="br"><span class="tag">CivitAI</span><h3>CivitAI Browser</h3><p>Search civitai.com from the LoRA browser or the style dialog, pre-filtered to your current base model, and download into your library.</p><p class="needs">Downloads through Lora Manager</p></div>
+        <div class="br"><span class="tag">Anima</span><h3>AnimaDex</h3><p>About 36,000 characters and artists the Anima model knows, each with a sample and the trigger that reproduces it.</p><p class="needs">Live API or offline catalogue</p></div>
+        <div class="br"><span class="tag">Model</span><h3>Checkpoint picker</h3><p>Every checkpoint on your server, searchable, with previews. Scan Server re-reads the file lists in seconds.</p><p class="needs">Built in</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="prompt-ai">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">Prompt AI</p>
+        <h2>A local language model rewrites the prompt. Nothing leaves your network.</h2>
+        <p>The AI button next to the prompt talks to <a href="https://ollama.com">Ollama</a> on your own machine. It writes tag lists for SD 1.5, SD XL, Illustrious, Pony and Anima, and natural language for Flux, Qwen, Z-Image and Krea 2.</p>
+      </div>
+      <div class="split">
+        <div class="copy">
+          <p><strong>Your syntax is safe.</strong> LoRA tags, <code>__name__</code> references and <code>{a|b}</code> or <code>[[a|b]]</code> groups are taken out before the prompt goes to the model and put back afterwards, so it cannot mangle or drop them.</p>
+          <p><strong>Prompt Batch</strong> builds a pool of different prompts before you generate, either varying the current one or inventing scenes for a theme, and writes them as one sequential group or a wildcard file.</p>
+          <p><strong>Shares the GPU politely.</strong> Free Image Model First unloads the diffusion models before each call, and the language model is dropped again right after, so image generation gets its VRAM back.</p>
+        </div>
+        <div class="menu" aria-label="Prompt AI menu">
+          <div class="menu-head"><span class="ai">AI</span>Prompt AI · your Ollama model on 127.0.0.1:11434</div>
+          <ul>
+            <li><b>Enhance</b><span>Improve the whole prompt, or only the selected text</span></li>
+            <li><b>Add detail only</b><span>Keeps your wording and adds to it</span></li>
+            <li><b>Rewrite from scratch</b><span>A new prompt for the same subject</span></li>
+            <li><b>Split into sections</b><span><code># Character</code>, <code># Lighting</code>, <code># Camera</code> and the rest, nothing dropped</span></li>
+            <li><b>Variations as sequential wildcard</b><span>Several alternatives as one <code>[[a|b|c]]</code> group</span></li>
+            <li><b>Describe the image</b><span>Captions the canvas or the selection, with a vision model</span></li>
+            <li><b>Modify with instruction…</b><span>"Make it night, remove the hat", with exclusions moved to the negative prompt</span></li>
+            <li class="sep"><b>Prompt batch for generation…</b><span>A pool of prompts for a batch or Loop Generate</span></li>
+            <li><b>Revert</b><span>Steps back through earlier versions</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="history">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">History and export</p>
+        <h2>Find the good one from last Tuesday.</h2>
+        <p>The history panel keeps every result with its prompt, and now you can search it, rate it and filter it.</p>
+      </div>
+      <div class="split">
+        <div class="copy">
+          <p><strong>Batches stay together.</strong> Results from one Generate click are grouped under one header, even when wildcards gave each image a different prompt. Click the header to select the whole batch.</p>
+          <p><strong>Favorites and 1–5 stars</strong>, with filters by rating and by prompt text. </p>
+          <p><strong>Four prompt actions instead of one.</strong> Apply or copy, the raw or the evaluated prompt. Copy Image puts the full-resolution result on the clipboard.</p>
+          <p><strong>Save to Eagle</strong> sends results to your Eagle library. Keyboard shortcuts are listed beside each entry in the context menu.</p>
+        </div>
+        <figure class="media">
+          <img src="media/demo-favorites.gif" alt="History panel: marking results as favorites and filtering to show only favorites" loading="lazy">
+          <figcaption>Favorites and filters in the history panel.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="install">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">Requirements and install</p>
+        <h2>If upstream runs on your machine, this fork does too.</h2>
+        <p>Same ComfyUI server, same hardware needs, same setup guide. The fork replaces the plugin folder and nothing else.</p>
+      </div>
+      <div class="req">
+        <div><span class="overline">Krita</span><b>5.2 or later</b><span>Windows, macOS or Linux.</span></div>
+        <div><span class="overline">Backend</span><b>ComfyUI</b><span>Local, on your network, or the managed install from upstream's setup.</span></div>
+        <div><span class="overline">Graphics card</span><b>As upstream</b><span>See upstream's hardware notes. Cloud generation works too.</span></div>
+        <div><span class="overline">Already installed?</span><b>Settings carry over</b><span>Styles, servers and workflows stay where they are.</span></div>
+      </div>
+      <ol class="steps">
+        <li><b>Set up the plugin once</b><p>Follow upstream's installation guide to get Krita and ComfyUI talking. Skip this if you already use Krita AI Diffusion.</p></li>
+        <li><b>Replace the plugin folder</b><p>Download the latest release and put its <code>ai_diffusion</code> folder in Krita's <code>pykrita</code> directory, replacing the old one.</p><span class="path">%APPDATA%\krita\pykrita\ai_diffusion</span></li>
+        <li><b>Restart Krita</b><p>The docker looks the same. The new buttons are next to the prompt, Generate and the batch count.</p></li>
+      </ol>
+      <div class="optional">
+        <table>
+          <thead><tr><th>Optional add-on</th><th>What it unlocks</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://github.com/willmiao/ComfyUI-Lora-Manager">ComfyUI-Lora-Manager</a></td><td>Previews, tags, trigger words and favorites in the LoRA and Recipe browsers, CivitAI downloads. Without it the browser falls back to a plain file list.</td></tr>
+            <tr><td><a href="https://ollama.com">Ollama</a></td><td>Prompt AI, Prompt Batch and generated wildcard files.</td></tr>
+            <tr><td><a href="https://eagle.cool">Eagle</a></td><td>Save to Eagle from the history.</td></tr>
+            <tr><td><a href="https://github.com/lbouaraba/comfyui-krea2edit">comfyui-krea2edit</a></td><td>Krea 2 Identity Edit, as a custom workflow and as an edit model.</td></tr>
+            <tr><td><a href="https://github.com/Blueforcer/ComfyUI-DLSS5-Enhancer">ComfyUI-DLSS5-Enhancer</a></td><td>DLSS5 Enhance on results, canvas or selection, tiled for any size. Windows, RTX 30 or newer.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">Questions</p>
+        <h2>Before you switch.</h2>
+      </div>
+      <div class="faq">
+        <details><summary>How is this related to Krita AI Diffusion?</summary><div><p>It is a fork of Acly's plugin. All credit for the plugin itself goes to Acly and the upstream contributors. This fork layers usability features on top and tracks upstream releases, currently v1.53.0.</p></div></details>
+        <details><summary>Do I lose my styles and settings?</summary><div><p>No. The fork reads the same settings folder, styles and server configuration as upstream. You can switch back by putting the upstream folder in place again.</p></div></details>
+        <details><summary>Does it change how images are generated?</summary><div><p>No. The inference core is upstream's. A plain prompt gives the same image with the same seed. The differences are in how prompts, batches and models are picked and organised.</p></div></details>
+        <details><summary>Is it free?</summary><div><p>Yes. It is open source under GPL-3.0, like the original. Local generation costs nothing per image.</p></div></details>
+        <details><summary>Does Prompt AI send my prompts anywhere?</summary><div><p>No. It only talks to the Ollama server you enter in the settings, by default <code>127.0.0.1:11434</code> on your own machine. It is off until you turn it on.</p></div></details>
+        <details><summary>Do I need ComfyUI-Lora-Manager?</summary><div><p>Only for the richer browser features. Without it the LoRA browser shows a plain file list and everything else works.</p></div></details>
+        <details><summary>How often is it updated?</summary><div><p>When upstream ships a release, it is merged into the fork and a new <code>-reloaded</code> release follows. Fork features land in between.</p></div></details>
+        <details><summary>Where do I report a bug?</summary><div><p>Bugs in fork features go to the <a href="https://github.com/FatGuy84/krita-ai-reloaded/issues">fork's issue tracker</a>. If it also happens with the upstream plugin, report it upstream.</p></div></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="band alt" id="support">
+    <div class="wrap">
+      <div class="cta">
+        <div>
+          <p class="overline">Download</p>
+          <h3>Get the latest release.</h3>
+          <p>v1.53.0-reloaded.4, based on upstream v1.53.0. Replace the <code>ai_diffusion</code> folder and restart Krita.</p>
+          <div class="btns">
+            <a class="btn btn-amber btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded/releases/latest">Download</a>
+            <a class="btn btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded#readme">Read the full README</a>
+          </div>
+        </div>
+        <div>
+          <p class="overline">Support</p>
+          <h3>If it saves you time.</h3>
+          <p>The fork is made in spare time. A tip on Ko-fi or GitHub Sponsors keeps it tracking upstream. Please consider sponsoring Acly too, who built the plugin this is based on.</p>
+          <div class="btns">
+            <a class="btn btn-lg" href="https://ko-fi.com/fatguy84">Ko-fi</a>
+            <a class="btn btn-lg" href="https://github.com/sponsors/FatGuy84">GitHub Sponsors</a>
+            <a class="btn btn-lg" href="https://github.com/sponsors/Acly">Sponsor Acly</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Krita AI Reloaded is a fork of <a href="https://github.com/Acly/krita-ai-diffusion">Krita AI Diffusion</a> by Acly. GPL-3.0. Not affiliated with the Krita Foundation.</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/FatGuy84/krita-ai-reloaded">GitHub</a>
+      <a href="https://github.com/FatGuy84/krita-ai-reloaded/releases">Releases</a>
+      <a href="https://docs.interstice.cloud">Upstream docs</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const prompt = document.getElementById("prompt");
+  const count = document.getElementById("count");
+  const list = document.getElementById("list");
+  const formula = document.getElementById("formula");
+  const genBtn = document.getElementById("generate");
+  const loopBtn = document.getElementById("loop");
+  const pauseBtn = document.getElementById("pause");
+  const bar = document.getElementById("bar");
+  const status = document.getElementById("status");
+  const shown = 8;
+  let running = null, done = 0, cycle = 1;
+
+  function groups(text) {
+    const out = [];
+    const re = /\[\[([\s\S]*?)\]\]/g;
+    let m;
+    while ((m = re.exec(text))) out.push({ start: m.index, end: re.lastIndex, opts: m[1].split("|").map(s => s.trim()) });
+    return out;
+  }
+  function combos(gs) { return gs.reduce((n, g) => n * g.opts.length, 1); }
+  function esc(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+  function pick(text, gs, i) {
+    // last group varies fastest: black+sitting, black+jumping, white+sitting, ...
+    let idx = i, html = "", pos = 0;
+    const choice = new Array(gs.length);
+    for (let g = gs.length - 1; g >= 0; g--) { const n = gs[g].opts.length; choice[g] = idx % n; idx = Math.floor(idx / n); }
+    gs.forEach((g, k) => {
+      html += esc(text.slice(pos, g.start));
+      const o = esc(g.opts[choice[k]]).replace(/&lt;lora:[^&]*?&gt;/g, t => '<span class="lora">' + t + "</span>");
+      html += "<mark>" + o + "</mark>";
+      pos = g.end;
+    });
+    html += esc(text.slice(pos));
+    return html.replace(/\{([^{}]*)\}/g, (_, b) => "<mark>" + esc(b.split("|")[Math.floor(Math.random() * b.split("|").length)]) + "</mark>");
+  }
+  function batch() { return Math.max(1, Math.min(1000, parseInt(count.value, 10) || 1)); }
+
+  function render() {
+    const text = prompt.value, gs = groups(text), n = combos(gs), b = batch();
+    genBtn.textContent = "Generate ×" + b;
+    formula.innerHTML = gs.length
+      ? gs.map(g => g.opts.length).join(" × ") + " = <b>" + n + "</b> combination" + (n === 1 ? "" : "s") + (b !== n ? " · batch " + b : "")
+      : "No <b>[[…]]</b> groups · every item gets the same prompt";
+    let html = "";
+    for (let i = 0; i < Math.min(b, shown); i++) {
+      const cls = running && i < done ? "done" : running && i === done ? "run" : "";
+      const st = cls === "done" ? "✓ done" : cls === "run" ? "generating…" : "queued";
+      html += '<li class="' + cls + '"><span class="n">#' + String(i + 1).padStart(2, "0") + '</span><span class="p">' + pick(text, gs, gs.length ? i % n : 0) + '</span><span class="st">' + st + "</span></li>";
+    }
+    if (b > shown) html += '<li class="more">+ ' + (b - shown) + " more item" + (b - shown === 1 ? "" : "s") + (gs.length && b > n ? ", repeating the " + n + " combinations" : "") + "</li>";
+    list.innerHTML = html;
+  }
+
+  function stop(msg) { clearInterval(running); running = null; done = 0; bar.style.width = "0"; status.textContent = msg; render(); }
+  function run() {
+    if (running) return;
+    done = 0; render();
+    const b = batch();
+    status.textContent = "Generating " + b + " image" + (b === 1 ? "" : "s") + (loopBtn.getAttribute("aria-pressed") === "true" ? " · loop " + cycle : "") + "…";
+    running = setInterval(() => {
+      if (pauseBtn.getAttribute("aria-pressed") === "true") { status.textContent = "Queue paused. The running image finishes, the rest wait."; return; }
+      done++;
+      bar.style.width = Math.min(100, (done / b) * 100) + "%";
+      render();
+      if (done >= b) {
+        if (loopBtn.getAttribute("aria-pressed") === "true") { clearInterval(running); running = null; cycle++; setTimeout(run, 500); }
+        else stop("Done. " + b + " result" + (b === 1 ? "" : "s") + " in the history, grouped as one batch.");
+      }
+    }, 450);
+  }
+
+  prompt.addEventListener("input", render);
+  count.addEventListener("input", render);
+  document.getElementById("fit").addEventListener("click", () => {
+    const gs = groups(prompt.value);
+    if (!gs.length) { status.textContent = "No sequential wildcards in the prompt, batch count left as it is."; return; }
+    count.value = combos(gs); render();
+    status.textContent = "Batch count set to " + count.value + ".";
+  });
+  genBtn.addEventListener("click", run);
+  loopBtn.addEventListener("click", () => {
+    const on = loopBtn.getAttribute("aria-pressed") !== "true";
+    loopBtn.setAttribute("aria-pressed", on);
+    if (on) { cycle = 1; run(); } else if (running) status.textContent = "Loop off. This batch finishes, then it stops.";
+  });
+  pauseBtn.addEventListener("click", () => {
+    const on = pauseBtn.getAttribute("aria-pressed") !== "true";
+    pauseBtn.setAttribute("aria-pressed", on);
+    if (!on && running) status.textContent = "Resumed.";
+  });
+  document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => {
+    if (running) stop("Ready.");
+    prompt.value = b.dataset.preset;
+    const gs = groups(prompt.value);
+    count.value = gs.length ? combos(gs) : 4;
+    render();
+  }));
+  document.querySelectorAll("[data-insert]").forEach(b => b.addEventListener("click", () => {
+    const s = prompt.selectionStart ?? prompt.value.length, ins = ", " + b.dataset.insert;
+    prompt.value = prompt.value.slice(0, s) + ins + prompt.value.slice(s);
+    prompt.focus(); prompt.selectionStart = prompt.selectionEnd = s + ins.length;
+    render();
+  }));
+  document.getElementById("ai-btn").addEventListener("click", () => {
+    status.textContent = "Prompt AI runs on your Ollama server. In this demo, try the a×b button instead.";
+  });
+  render();
+})();
+</script>
