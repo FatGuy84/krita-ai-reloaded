@@ -81,8 +81,17 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .nav a { text-decoration: none; color: var(--ink-muted); font-weight: 500; font-size: 15px; }
 .nav a:hover { color: var(--ink); }
 .top .spacer { flex: 1; }
-.top .support { font-size: 15px; color: var(--ink-muted); text-decoration: none; }
-.top .support:hover { color: var(--ink); }
+.btn .heart { color: var(--mark); }
+.btn-amber .heart { color: var(--on-amber); }
+.btn-ring { border-color: var(--mark); }
+.hero-links { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.support-strip { border-top: 1px solid var(--hairline); background: var(--surface-200); }
+.support-strip .wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding-block: 28px; }
+.support-strip p { flex: 1; min-width: 16em; font-size: 18px; }
+.support-strip p b { font-weight: 700; }
+.support-strip p span { color: var(--ink-muted); }
+.support-strip .btns { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .btn { display: inline-flex; align-items: center; gap: 8px; font: 600 15px/1 var(--font-sans); text-decoration: none; border-radius: var(--radius-md); padding: 11px 18px; border: 1px solid var(--border); background: var(--surface-200); color: var(--ink); cursor: pointer; }
 .btn:hover { background: var(--surface-300); }
@@ -241,6 +250,11 @@ section.band.alt { background: var(--surface-000); }
 .cta h3 { font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
 .cta p { color: var(--ink-muted); }
 .cta .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.cta > .give { border: 2px solid var(--mark); }
+.give ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.give li { padding-left: 16px; position: relative; color: var(--ink-muted); }
+.give li::before { content: "–"; position: absolute; left: 0; }
+.give .fine { font-size: 14px; color: var(--ink-muted); }
 
 footer { border-top: 1px solid var(--hairline); padding-block: 32px 48px; background: var(--surface-000); font-size: 14px; color: var(--ink-muted); }
 footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wrap: wrap; align-items: center; }
@@ -261,7 +275,8 @@ footer a:hover { color: var(--ink); }
 }
 @media (max-width: 640px) {
   body { font-size: 16px; }
-  .top .support { display: none; }
+  .top .btn-support span { display: none; }
+  .top .btn-support { padding-inline: 11px; }
   .hero { padding-block: 40px 24px; }
   section.band { padding-block: 64px; }
   .glance, .browsers, .steps, .req, .faq, .controls { grid-template-columns: minmax(0, 1fr); }
@@ -273,6 +288,10 @@ footer a:hover { color: var(--ink); }
   .cta > div { padding: 24px; }
 }
 </style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></symbol>
+</svg>
 
 <header class="top">
   <div class="wrap">
@@ -288,7 +307,7 @@ footer a:hover { color: var(--ink); }
       <a href="#install">Install</a>
     </nav>
     <div class="spacer"></div>
-    <a class="support" href="#support">Support</a>
+    <a class="btn btn-ring btn-support" href="https://ko-fi.com/fatguy84" aria-label="Support on Ko-fi"><svg class="heart" aria-hidden="true"><use href="#heart"/></svg><span>Support</span></a>
     <a class="btn btn-amber" href="https://github.com/FatGuy84/krita-ai-reloaded/releases/latest">Download</a>
   </div>
 </header>
@@ -308,10 +327,13 @@ footer a:hover { color: var(--ink); }
             Download the plugin
           </a>
           <p class="meta"><b>v1.53.0-reloaded.4</b>, released 7 October 2026<br>Free and open source, GPL-3.0. Windows, macOS and Linux, wherever Krita runs.</p>
-          <a class="btn" href="https://github.com/FatGuy84/krita-ai-reloaded">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6-6 6 6 6"/><path d="m16 6 6 6-6 6"/></svg>
-            Source on GitHub
-          </a>
+          <div class="hero-links">
+            <a class="btn" href="https://github.com/FatGuy84/krita-ai-reloaded">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6-6 6 6 6"/><path d="m16 6 6 6-6 6"/></svg>
+              Source on GitHub
+            </a>
+            <a class="btn btn-ring" href="https://ko-fi.com/fatguy84"><svg class="heart" aria-hidden="true"><use href="#heart"/></svg>Support on Ko-fi</a>
+          </div>
         </div>
       </div>
 
@@ -529,6 +551,16 @@ footer a:hover { color: var(--ink); }
     </div>
   </section>
 
+  <aside class="support-strip" aria-label="Support the fork">
+    <div class="wrap">
+      <p><b>Made in spare time, free for everyone.</b> <span>If Loop Generate ran your batches overnight, a coffee keeps the next upstream merge coming.</span></p>
+      <div class="btns">
+        <a class="btn btn-amber" href="https://ko-fi.com/fatguy84"><svg class="heart" aria-hidden="true"><use href="#heart"/></svg>Buy a coffee on Ko-fi</a>
+        <a class="btn btn-ring" href="https://github.com/sponsors/FatGuy84"><svg class="heart" aria-hidden="true"><use href="#heart"/></svg>GitHub Sponsors</a>
+      </div>
+    </div>
+  </aside>
+
   <section class="band alt" id="install">
     <div class="wrap">
       <div class="sec-head">
@@ -593,15 +625,20 @@ footer a:hover { color: var(--ink); }
             <a class="btn btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded#readme">Read the full README</a>
           </div>
         </div>
-        <div>
-          <p class="overline">Support</p>
-          <h3>If it saves you time.</h3>
-          <p>The fork is made in spare time. A tip on Ko-fi or GitHub Sponsors keeps it tracking upstream. Please consider sponsoring Acly too, who built the plugin this is based on.</p>
+        <div class="give">
+          <p class="overline">Keep it going</p>
+          <h3>Free, because people chip in.</h3>
+          <p>The fork is made in one person's spare time. A tip pays for:</p>
+          <ul>
+            <li>Time to merge every upstream release into the fork</li>
+            <li>Ports of new models and upstream pull requests</li>
+            <li>New browsers and batch tools, and fixes for the ones you use</li>
+          </ul>
           <div class="btns">
-            <a class="btn btn-lg" href="https://ko-fi.com/fatguy84">Ko-fi</a>
-            <a class="btn btn-lg" href="https://github.com/sponsors/FatGuy84">GitHub Sponsors</a>
-            <a class="btn btn-lg" href="https://github.com/sponsors/Acly">Sponsor Acly</a>
+            <a class="btn btn-amber btn-lg" href="https://ko-fi.com/fatguy84"><svg class="heart" aria-hidden="true"><use href="#heart"/></svg>Support on Ko-fi</a>
+            <a class="btn btn-ring btn-lg" href="https://github.com/sponsors/FatGuy84"><svg class="heart" aria-hidden="true"><use href="#heart"/></svg>GitHub Sponsors</a>
           </div>
+          <p class="fine">Please consider <a href="https://github.com/sponsors/Acly">sponsoring Acly</a> too, who built the plugin this is based on.</p>
         </div>
       </div>
     </div>
@@ -615,6 +652,8 @@ footer a:hover { color: var(--ink); }
       <a href="https://github.com/FatGuy84/krita-ai-reloaded">GitHub</a>
       <a href="https://github.com/FatGuy84/krita-ai-reloaded/releases">Releases</a>
       <a href="https://docs.interstice.cloud">Upstream docs</a>
+      <a href="https://ko-fi.com/fatguy84">Ko-fi</a>
+      <a href="https://github.com/sponsors/FatGuy84">GitHub Sponsors</a>
     </nav>
   </div>
 </footer>
