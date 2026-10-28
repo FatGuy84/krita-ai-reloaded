@@ -14,6 +14,7 @@ from ..backend.resources import Arch, ControlMode, ResourceKind, resource_id
 from ..image import BlendMode, Bounds, Extent, Image
 from ..layer import Layer, LayerType
 from ..localization import translate as _
+from ..text import sanitize_reference_name
 from ..util import PluginError
 from ..util import client_logger as log
 from . import jobs, model
@@ -32,6 +33,7 @@ class ControlLayer(QObject, ObservableProperties):
     start = Property(0.0, persist=True)
     end = Property(1.0, persist=True)
     use_custom_strength = Property(False, persist=True, setter="set_use_custom_strength")
+    name = Property("", persist=True, setter="set_name")
     is_supported = Property(True)
     is_pose_vector = Property(False)
     can_generate = Property(True)
@@ -46,6 +48,7 @@ class ControlLayer(QObject, ObservableProperties):
     start_changed = pyqtSignal(float)
     end_changed = pyqtSignal(float)
     use_custom_strength_changed = pyqtSignal(bool)
+    name_changed = pyqtSignal(str)
     is_supported_changed = pyqtSignal(bool)
     is_pose_vector_changed = pyqtSignal(bool)
     can_generate_changed = pyqtSignal(bool)
@@ -106,6 +109,13 @@ class ControlLayer(QObject, ObservableProperties):
             if not value:
                 self._set_values_from_preset()
 
+    def set_name(self, value: str):
+        value = sanitize_reference_name(value)
+        if value != self.name:
+            self._name = value
+            self.name_changed.emit(value)
+            self.modified.emit(self, "name")
+
     @property
     def index(self):
         return self._index
@@ -141,7 +151,8 @@ class ControlLayer(QObject, ObservableProperties):
                 image = Image.scale(image, self.clip_vision_extent)
 
         strength = self.strength / self.strength_multiplier
-        return ControlInput(self.mode, image, strength, (self.start, self.end))
+        name = self.name if self.mode.is_ip_adapter else ""
+        return ControlInput(self.mode, image, strength, (self.start, self.end), name)
 
     def generate_segmentation(self):
         assert self.mode is ControlMode.segmentation

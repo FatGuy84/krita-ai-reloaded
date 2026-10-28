@@ -160,6 +160,32 @@ saving. Entries are written in rounds rather than one call each, since an entry
 is only a few words and per-call model overhead would dominate. Saving switches
 to the Library tab with the new file selected, ready to edit.
 
+### Named references (`@Name`)
+
+Multi-image edit models (Qwen Edit Plus, Flux 2 Klein, Krea 2) can take
+several reference images, but the prompt has to point at them by number —
+"image 2", "Picture 3" — and that number shifts whenever you add, remove or
+reorder a reference layer. This fork lets you **name** each Reference control
+layer (the small *Name* field next to the layer picker, shown for edit models)
+and mention it in the prompt instead:
+
+```
+Add @hat and @scarf to the girl
+```
+
+Typing `@` opens a completion list with the names of the current reference
+layers. On generate, each `@name` is rewritten to the token the model expects,
+counting images in the order they are sent (the canvas first when editing,
+then the reference layers in the order they are listed, then regional ones) — `image 2` for
+Flux 2 / Krea 2, `Picture 2` for Qwen Edit Plus. Names are case-insensitive and
+saved with the document.
+
+Models that get a single stitched image (Flux Kontext, Qwen Edit) or no image
+numbering at all get the plain name, so the same prompt still reads naturally.
+An `@name` that matches no reference layer is left as typed and logged as a
+warning, and `a@b.com`-style text is never touched. Wildcards and
+`<lora:...>` tags are unaffected.
+
 ### Prompt AI
 
 An **AI** button next to the prompt rewrites it with a local language model

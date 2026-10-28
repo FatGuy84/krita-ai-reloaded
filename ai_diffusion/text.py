@@ -49,6 +49,9 @@ class LoraId(NamedTuple):
 pattern_comment = re.compile(r"(?<!\\)#(?![0-9a-fA-F]{6}).*")
 pattern_lora = re.compile(r"<lora:([^:<>]+)(?::(-?[^:<>]*))?>", re.IGNORECASE)
 pattern_layer = re.compile(r"<layer:([^>]+)>", re.IGNORECASE)
+# @Name mention of a named reference image. Not preceded by a word char, so e-mail
+# addresses and the like stay untouched.
+pattern_reference_name = re.compile(r"(?<![\w@])@(\w+(?:-\w+)*)")
 pattern_weight_expr = re.compile(r"\([^:()]+:(-?[\d.]+)\)")
 pattern_wildcard = re.compile(r"(\{[^{}]+\|[^{}]+\})")
 pattern_seq_wildcard = re.compile(r"\[\[((?:(?!\]\]).)*)\]\]", re.DOTALL)
@@ -151,6 +154,39 @@ def replace_layers(prompt: str, layer_mapping: dict[str, int], replacement="Pict
         return replacement.format(layer_mapping[match[1]])
 
     return pattern_layer.sub(replace, prompt).strip()
+
+
+def sanitize_reference_name(name: str):
+    return re.sub(r"[^\w\-]", "", re.sub(r"\s+", "_", name.strip()))
+
+
+def reference_name_mapping(names: list[str], start_index=1) -> dict[str, int]:
+    """Map reference names (case-insensitive) to their image number in the prompt.
+    `names` holds one entry per input image in order, empty for unnamed ones."""
+    mapping: dict[str, int] = {}
+    for index, name in enumerate(names, start_index):
+        key = sanitize_reference_name(name).lower()
+        if key and key not in mapping:
+            mapping[key] = index
+    return mapping
+
+
+def replace_reference_names(prompt: str, mapping: dict[str, int], replacement=""):
+    """Rewrite @Name mentions to the token the model uses for its input images (eg.
+    "image {}"). Without a replacement (model has no numbered images) the mention becomes
+    the plain name. Unknown names are left as they are."""
+
+    def replace(match: re.Match[str]):
+        name = match[1]
+        index = mapping.get(name.lower())
+        if index is None:
+            log.warning(f"Prompt mentions unknown reference @{name}")
+            return match[0]
+        if replacement:
+            return replacement.format(index)
+        return name
+
+    return pattern_reference_name.sub(replace, prompt)
 
 
 def eval_wildcards(text: str, seed: int, batch_index: int = 0):

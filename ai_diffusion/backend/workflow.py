@@ -15,7 +15,9 @@ from ..text import (
     eval_wildcards,
     extract_loras,
     merge_prompt,
+    reference_name_mapping,
     replace_layers,
+    replace_reference_names,
     strip_prompt_comments,
 )
 from ..util import ensure, median_or_zero, unique
@@ -1756,6 +1758,14 @@ def build_instructions(cond: ConditioningInput, arch: Arch, inpaint: InpaintMode
     return cond.positive
 
 
+def _reference_names(cond: ConditioningInput):
+    # Same order in which encode_prompt and apply_reference_conditioning pass the images
+    # to the model: canvas (when editing) first, then reference controls, then regions.
+    controls = cond.control + [c for r in cond.regions for c in r.control]
+    names = [c.name for c in controls if c.mode.is_ip_adapter]
+    return reference_name_mapping(names, start_index=2 if cond.edit_reference else 1)
+
+
 def prepare_prompts(
     cond: ConditioningInput,
     style: Style,
@@ -1794,6 +1804,8 @@ def prepare_prompts(
     cond.positive += _collect_lora_triggers(models.loras, files)
     if arch.is_flux2 or arch is Arch.krea2:
         cond.positive = build_instructions(cond, arch, inpaint)
+    ref_names = _reference_names(cond)
+    cond.positive = replace_reference_names(cond.positive, ref_names, layer_replace)
     if cond.positive == "" and inpaint is InpaintMode.remove_object:
         cond.positive = "background scenery"
     meta["prompt_final"] = cond.positive
@@ -1823,6 +1835,7 @@ def prepare_prompts(
         region.positive, region.loras = extract_loras(region.positive, files.loras)
         region.loras = [l for l in region.loras if l not in extra_loras]
         region.positive = replace_layers(region.positive, ref_layers, layer_replace)
+        region.positive = replace_reference_names(region.positive, ref_names, layer_replace)
         meta["regions"].append(region_meta)
 
     if len(cond.regions) == 1:

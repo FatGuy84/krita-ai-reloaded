@@ -93,6 +93,7 @@ class ControlInput:
     image: Image | None = None
     strength: float = 1.0
     range: tuple[float, float] = (0.0, 1.0)
+    name: str = ""  # addressed as @name in the prompt of multi-image edit models
 
 
 @dataclass

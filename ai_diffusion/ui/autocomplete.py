@@ -137,6 +137,13 @@ _tag_model = TagListModel([])
 _tag_files = None
 
 
+def _reference_names():
+    regions = root.active_model.active_regions
+    controls = list(regions.control) + [c for r in regions for c in r.control]
+    names = (c.name for c in controls if c.name and c.mode.is_ip_adapter)
+    return list(dict.fromkeys(names))
+
+
 class PromptAutoComplete:
     def __init__(self, widget: QPlainTextEdit):
         self._widget = widget
@@ -216,6 +223,7 @@ class PromptAutoComplete:
         if not lora_mode:
             name = prefix.removeprefix("<layer:")
             layer_mode = len(prefix) > len(name)
+        reference_mode = not lora_mode and not layer_mode and prefix.startswith("@")
 
         if lora_mode:
             self._completer.setModel(self._lora_model)
@@ -228,6 +236,16 @@ class PromptAutoComplete:
             self._completer.setModel(layer_model)
             self._completion_prefix = name
             self._completion_suffix = ">"
+            self._popup.setItemDelegate(self._item_delegate)
+        elif reference_mode:
+            names = _reference_names()
+            if not names:
+                self._popup.hide()
+                return
+            name = prefix[1:]
+            self._completer.setModel(QStringListModel(names))
+            self._completion_prefix = name
+            self._completion_suffix = ""
             self._popup.setItemDelegate(self._item_delegate)
         else:
             # fall through to tag search
@@ -253,7 +271,7 @@ class PromptAutoComplete:
         if prefix.startswith("<lora:"):
             if file := root.files.loras.find(f"{completion}.safetensors"):
                 triggers = " " + file.meta("lora_triggers", "")
-        elif prefix.startswith("<layer:"):
+        elif prefix.startswith("<layer:") or prefix.startswith("@"):
             pass
         else:  # tag completion
             # escape () in tags so they won't be interpreted as prompt weights
