@@ -7,8 +7,11 @@ from weakref import WeakValueDictionary
 
 import krita
 from krita import Krita
-from PyQt5.QtCore import QByteArray, QObject, QTimer, pyqtSignal
+from PyQt5.QtCore import QByteArray, QObject, Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import QImage
+from PyQt5.QtWidgets import QAction
 
+from . import eventloop
 from .image import Bounds, Extent, Image, Mask
 from .layer import Layer, LayerManager, LayerType
 from .localization import translate as _
@@ -235,16 +238,41 @@ class KritaDocument(Document):
 
     def set_selection(self, mask: Image, bounds: Bounds):
         assert mask.is_mask
-        selection = krita.Selection()
-        selection.setPixelData(mask.data, *bounds)
-        self._doc.setSelection(selection)
-        self._doc.waitForDone()
-        # setSelection doesn't notify the canvas, so no marching ants appear until the
-        # selection changes again. Toggling "Display Selection" off and on makes the
-        # decoration rebuild its outline, without adding undo steps.
-        if action := Krita.instance().action("toggle_display_selection"):
+        action = Krita.instance().action("selectopaque")
+        if action is None:
+            selection = krita.Selection()
+            selection.setPixelData(mask.data, *bounds)
+            self._doc.setSelection(selection)
+            return
+        eventloop.run(self._select_opaque(action, mask, bounds))
+
+    async def _select_opaque(self, action: QAction, mask: Image, bounds: Bounds):
+        # Document.setSelection doesn't notify the canvas, so the selection works but no
+        # marching ants are drawn. Krita's own "Select Opaque" on a temporary layer that
+        # carries the mask as alpha does, and is a regular undo step.
+        alpha = QImage(bounds.width, bounds.height, QImage.Format.Format_ARGB32)
+        alpha.fill(Qt.GlobalColor.white)
+        alpha.setAlphaChannel(mask._qimage)  # converts to premultiplied
+        alpha = alpha.convertToFormat(QImage.Format.Format_ARGB32)
+        doc = self._doc
+        previous = doc.activeNode()
+        node = doc.createNode("[AI Select]", "paintlayer")
+        node.setPixelData(Image(alpha).data, *bounds)
+        doc.rootNode().addChildNode(node, None)
+        try:
+            doc.setActiveNode(node)
+            node_id = node.uniqueId()
+            await eventloop.wait_until(
+                lambda: (active := doc.activeNode()) is not None and active.uniqueId() == node_id,
+                no_error=True,
+            )
+            await eventloop.process_events()
             action.trigger()
-            action.trigger()
+            doc.waitForDone()
+        finally:
+            node.remove()
+            if previous is not None:
+                doc.setActiveNode(previous)
 
     def get_image(self, bounds: Bounds | None = None, exclude_layers: list[Layer] | None = None):
         excluded: list[Layer] = []
