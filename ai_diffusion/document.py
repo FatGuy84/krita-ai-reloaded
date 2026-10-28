@@ -238,6 +238,13 @@ class KritaDocument(Document):
         selection = krita.Selection()
         selection.setPixelData(mask.data, *bounds)
         self._doc.setSelection(selection)
+        self._doc.waitForDone()
+        # setSelection doesn't notify the canvas, so no marching ants appear until the
+        # selection changes again. Toggling "Display Selection" off and on makes the
+        # decoration rebuild its outline, without adding undo steps.
+        if action := Krita.instance().action("toggle_display_selection"):
+            action.trigger()
+            action.trigger()
 
     def get_image(self, bounds: Bounds | None = None, exclude_layers: list[Layer] | None = None):
         excluded: list[Layer] = []
