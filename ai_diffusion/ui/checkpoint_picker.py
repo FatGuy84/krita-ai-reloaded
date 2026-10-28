@@ -40,8 +40,16 @@ from ..model.root import root
 from ..settings import settings
 from ..style import Styles
 from . import theme
+from .generate_across import AcrossOptions, generate_across_checkpoints
 from .generate_sets import GenerateSetBar
-from .lora_picker import _extract_video_frame, _ffmpeg_path, _is_video_url, _visible_range, _with_tag
+from .lora_picker import (
+    _extract_video_frame,
+    _ffmpeg_path,
+    _is_video_url,
+    _visible_range,
+    _with_tag,
+)
+
 
 def _with_style_badge(pixmap: QPixmap) -> QPixmap:
     """Small green checkmark, top-left: a style already exists for this checkpoint."""
@@ -135,7 +143,9 @@ class CheckpointBrowser(QWidget):
         self._favorites_only.toggled.connect(self._apply_filter)
 
         self._hide_styled = QCheckBox(_("Hide checkpoints with a style"), self)
-        self._hide_styled.setToolTip(_("Hide checkpoints that already have a style created for them"))
+        self._hide_styled.setToolTip(
+            _("Hide checkpoints that already have a style created for them")
+        )
         self._hide_styled.toggled.connect(self._apply_filter)
 
         self._nsfw_combo = QComboBox(self)
@@ -202,7 +212,9 @@ class CheckpointBrowser(QWidget):
         self._template_combo = QComboBox(self)
         self._template_combo.setMinimumWidth(180)
         self._template_combo.setToolTip(
-            _("New styles copy this style's settings (sampler, steps, etc.), only the checkpoint differs")
+            _(
+                "New styles copy this style's settings (sampler, steps, etc.), only the checkpoint differs"
+            )
         )
 
         self._selected_label = QLabel(_("No checkpoint selected"), self)
@@ -225,6 +237,7 @@ class CheckpointBrowser(QWidget):
             )
         )
         self._generate_btn.clicked.connect(self._generate_across)
+        self._across_options = AcrossOptions(self)
 
         self._create_btn = QPushButton(_("Create Styles"), self)
         self._create_btn.setEnabled(False)
@@ -240,6 +253,7 @@ class CheckpointBrowser(QWidget):
         bottom.addWidget(self._template_combo)
         bottom.addWidget(seed_label)
         bottom.addWidget(self._seed_input)
+        bottom.addWidget(self._across_options)
         bottom.addWidget(self._generate_btn)
         bottom.addWidget(self._create_btn)
 
@@ -690,16 +704,9 @@ class CheckpointBrowser(QWidget):
             self._status.setText(_("None of the selected checkpoints are on the server"))
             return
 
-        style = model.style
-        original_ckpts = list(style.checkpoints)
-
-        def set_checkpoint(identifier):
-            return lambda: setattr(style, "checkpoints", [identifier])
-
-        model.generate_across(
-            [set_checkpoint(i) for i in ids],
-            seed,
-            restore=lambda: setattr(style, "checkpoints", original_ckpts),
-        )
-
+        client = root.connection.client_if_connected
+        if client is None or not generate_across_checkpoints(
+            model, client.models, ids, seed, self._across_options, self
+        ):
+            return
         self._status.setText(_("Queued {n} checkpoints (seed {s})").format(n=len(ids), s=seed))

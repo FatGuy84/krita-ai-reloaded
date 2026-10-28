@@ -105,18 +105,6 @@ Other batch changes:
   that makes; with a fixed seed one image per value is queued, so strength is the
   only difference. Turn the fixed seed off to get *Images per step* (1–50) with
   random seeds. Your previous strength and batch count are restored.
-* **Compare Models**: the ⊞ button next to the Strength Sweep. Tick the
-  checkpoints to compare (alphabetical, searchable, filter by architecture; the
-  checkpoint sets from the checkpoint browser work here too) and the current
-  prompt runs once per checkpoint with the same seed — every other style setting
-  stays as it is, so the model is the only difference. Results land in the
-  history; optionally each one also becomes a layer (`[Model] <name> (seed)`)
-  and/or, once all are done, one grid layer with the short checkpoint name above
-  each image, scaled to fit the canvas. LoRAs that belong to another
-  architecture than the checkpoint under test (Lora Manager's base model, else
-  the style's own checkpoint) are left out for that checkpoint — the dialog
-  lists which ones before you start. A style pinned to an architecture falls
-  back to auto-detect for checkpoints it doesn't fit.
 * **Pause queue**: a pause toggle next to Loop Generate. The running generation
   finishes, queued jobs (batches, Loop Generate) wait until you click again.
   ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the
@@ -499,7 +487,12 @@ picker dialog as the LoRA browser. Click the style name/icon button
   a seed (or leave it random), and hit **Generate across** — runs the
   current prompt once per style with the *same* seed, so the style is the
   only variable and results land grouped by style in the history for an
-  easy comparison.
+  easy comparison. Tick **Grid** to get one extra layer once all are done,
+  with the results side by side and the style name above each, scaled to fit
+  the canvas; tick **Layers** to also put every result on the canvas as
+  `[style name] prompt (seed)`. LoRAs written in the prompt that belong to
+  another architecture than a style's checkpoint are left out for that style
+  (a dialog lists them before anything is queued).
 
 #### Create Styles from Checkpoints
 
@@ -524,9 +517,15 @@ narrows the browser down to ones that don't yet. Same **content filter**
 
 The same browser also has a **Generate across** button — like the style
 sweep above, but over raw checkpoints instead of full styles, useful for a
-quick look before committing to creating styles for all of them. Since a
-raw checkpoint carries no sampler/arch settings of its own, this works best
-comparing checkpoints of the same base model family.
+quick look before committing to creating styles for all of them. Only the
+checkpoint changes; sampler, steps and every other setting come from the
+current style. The same **Grid** / **Layers** options apply (labels are the
+short checkpoint name, e.g. `[flux1-dev] prompt (seed)`). The style's LoRAs
+and the prompt's LoRAs that belong to another architecture than a checkpoint
+are left out for that one — Lora Manager's base model decides, else the
+current style's architecture — and a style pinned to an architecture falls
+back to auto-detect for checkpoints it doesn't fit. Still works best within
+one base model family, since sampler settings rarely carry over.
 
 ### Faster startup
 

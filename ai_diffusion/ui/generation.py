@@ -1374,13 +1374,6 @@ class GenerationWidget(QWidget):
         )
         self.sweep_button.clicked.connect(self._open_strength_sweep)
         strength_layout.addWidget(self.sweep_button)
-        self.compare_button = QToolButton(self)
-        self.compare_button.setText("⊞")
-        self.compare_button.setToolTip(
-            _("Compare Models: one image per selected checkpoint, same prompt and seed")
-        )
-        self.compare_button.clicked.connect(self._open_model_compare)
-        strength_layout.addWidget(self.compare_button)
         strength_layout.addWidget(self.layer_count_widget)
         strength_layout.addWidget(self.add_control_button)
         strength_layout.addWidget(self.add_region_button)
@@ -1624,12 +1617,6 @@ class GenerationWidget(QWidget):
         from .strength_sweep import StrengthSweepDialog
 
         StrengthSweepDialog(self.model, self).exec_()
-
-    def _open_model_compare(self):
-        from .model_compare import ModelCompareDialog
-
-        if client := root.connection.client_if_connected:
-            ModelCompareDialog(self.model, client.models, self).exec_()
 
     def _toggle_preview(self, on: bool):
         settings.show_generation_preview = on

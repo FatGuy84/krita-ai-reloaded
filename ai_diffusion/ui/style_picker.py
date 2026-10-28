@@ -35,6 +35,7 @@ from ..model.root import root
 from ..settings import settings
 from ..style import Style, Styles, sort_recent_styles
 from . import theme
+from .generate_across import AcrossOptions, generate_across_styles
 from .generate_sets import GenerateSetBar
 from .lora_picker import (
     _extract_video_frame,
@@ -194,6 +195,7 @@ class StyleBrowser(QWidget):
             _("Run the current prompt once per selected style, same seed, to compare them")
         )
         self._generate_btn.clicked.connect(self._generate_across)
+        self._across_options = AcrossOptions(self)
 
         self._favorite_btn = QPushButton(_("Favorite"), self)
         self._favorite_btn.setEnabled(False)
@@ -210,6 +212,7 @@ class StyleBrowser(QWidget):
         bottom.addStretch(1)
         bottom.addWidget(seed_label)
         bottom.addWidget(self._seed_input)
+        bottom.addWidget(self._across_options)
         bottom.addWidget(self._generate_btn)
         bottom.addWidget(self._favorite_btn)
         bottom.addWidget(self._delete_btn)
@@ -576,19 +579,13 @@ class StyleBrowser(QWidget):
     def _generate_across(self):
         styles = self._selected_styles()
         model = root.active_model
-        if not styles or model is None:
+        client = root.connection.client_if_connected
+        if not styles or model is None or client is None:
             return
-        original = model.style
         seed = self._seed_input.value()
         if seed < 0:
             seed = workflow.generate_seed()
-
-        def use(style):
-            return lambda: setattr(model, "style", style)
-
-        model.generate_across(
-            [use(s) for s in styles], seed, restore=lambda: setattr(model, "style", original)
-        )
+        generate_across_styles(model, client.models, styles, seed, self._across_options, self)
 
     def _is_builtin(self, style: Style) -> bool:
         return style.filename.startswith("built-in/")
