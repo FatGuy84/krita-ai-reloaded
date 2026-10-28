@@ -6,6 +6,7 @@ on:
     paths:
       - "site/**"
       - "media/**"
+      - "ai_diffusion/icons/logo-128.png"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -27,8 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The page references its assets next to itself; copy the demo GIFs from media/ instead
-      # of checking in duplicates. The fork mark lives in site/ (ai_diffusion/icons has upstream's).
+      # The page references its assets next to itself; copy them from where the repo keeps
+      # them instead of checking in duplicates.
       - name: Assemble site
         run: |
           mkdir -p _site/media
@@ -37,6 +38,7 @@ jobs:
           { printf '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<link rel="icon" href="logo-128.png">\n</head>\n<body>\n'
             cat site/index.html
             printf '\n</body>\n</html>\n'; } > _site/index.html
+          cp ai_diffusion/icons/logo-128.png _site/
           for f in demo-wildcards demo-loop-generate demo-lora-browser demo-favorites; do
             cp "media/$f.gif" _site/media/
           done
