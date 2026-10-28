@@ -105,6 +105,18 @@ Other batch changes:
   that makes; with a fixed seed one image per value is queued, so strength is the
   only difference. Turn the fixed seed off to get *Images per step* (1–50) with
   random seeds. Your previous strength and batch count are restored.
+* **Compare Models**: the ⊞ button next to the Strength Sweep. Tick the
+  checkpoints to compare (alphabetical, searchable, filter by architecture; the
+  checkpoint sets from the checkpoint browser work here too) and the current
+  prompt runs once per checkpoint with the same seed — every other style setting
+  stays as it is, so the model is the only difference. Results land in the
+  history; optionally each one also becomes a layer (`[Model] <name> (seed)`)
+  and/or, once all are done, one grid layer with the short checkpoint name above
+  each image, scaled to fit the canvas. LoRAs that belong to another
+  architecture than the checkpoint under test (Lora Manager's base model, else
+  the style's own checkpoint) are left out for that checkpoint — the dialog
+  lists which ones before you start. A style pinned to an architecture falls
+  back to auto-detect for checkpoints it doesn't fit.
 * **Pause queue**: a pause toggle next to Loop Generate. The running generation
   finishes, queued jobs (batches, Loop Generate) wait until you click again.
   ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the

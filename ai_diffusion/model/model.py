@@ -12,7 +12,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 from PyQt5.QtCore import QMetaObject, QObject, Qt, QUuid, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QPainter
@@ -186,6 +186,8 @@ class DocumentModel(QObject, ObservableProperties):
         self._preview_job_id: str | None = None  # job whose sampler preview is on the canvas
         self._auto_select = False  # selection is being changed by the model, not the user
         self._browsing = False  # user picked a result, don't take over the canvas
+        # set while comparing models: drops LoRAs that don't fit the checkpoint under test
+        self.lora_filter: Callable[[str], bool] | None = None
         self.generate_seed()
         self.jobs = JobQueue()
         self.regions = RootRegion(self)
@@ -395,6 +397,8 @@ class DocumentModel(QObject, ObservableProperties):
             inpaint=inpaint,
             layer_count=self.layer_count,
         )
+        if self.lora_filter is not None and input.models:
+            input.models.loras = [l for l in input.models.loras if self.lora_filter(l.name)]
         loras = input.models.loras if input.models else []
         job_name = prompt_meta.get("prompt_eval", prompt_meta["prompt"])
         job_params = JobParams(bounds, job_name, regions=job_regions)
