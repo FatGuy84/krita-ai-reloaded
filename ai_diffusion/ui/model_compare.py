@@ -201,9 +201,9 @@ class ModelCompareDialog(QDialog):
         self._search.textChanged.connect(self._apply_filter)
         self._arch_combo = QComboBox(self)
         self._arch_combo.addItem(_("Any architecture"), _ARCH_ANY)
-        archs = sorted({info.arch for info in models.checkpoints.values()}, key=lambda a: a.text)
+        archs = sorted({info.arch for info in models.checkpoints.values()}, key=lambda a: a.value)
         for arch in archs:
-            self._arch_combo.addItem(arch.text, arch.name)
+            self._arch_combo.addItem(arch.value, arch.name)
         self._arch_combo.currentIndexChanged.connect(self._apply_filter)
         filter_row = QHBoxLayout()
         filter_row.addWidget(self._search, 1)
@@ -214,7 +214,7 @@ class ModelCompareDialog(QDialog):
         previous = set(self._last_selection)
         for id in sorted(models.checkpoints, key=lambda c: short_name(c).lower()):
             info = models.checkpoints[id]
-            item = QListWidgetItem(f"{short_name(id)}  ·  {info.arch.text}", self._list)
+            item = QListWidgetItem(f"{short_name(id)}  ·  {info.arch.value}", self._list)
             item.setData(Qt.ItemDataRole.UserRole, id)
             item.setToolTip(id)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
