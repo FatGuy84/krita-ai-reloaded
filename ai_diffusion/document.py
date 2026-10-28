@@ -60,6 +60,9 @@ class Document(QObject):
     ) -> Image:
         raise NotImplementedError
 
+    def set_selection(self, mask: Image, bounds: Bounds):
+        raise NotImplementedError
+
     def resize(self, extent: Extent):
         raise NotImplementedError
 
@@ -229,6 +232,12 @@ class KritaDocument(Document):
         bounds = Bounds.clamp(bounds, self.extent)
         data = selection.pixelData(*bounds)
         return Mask(bounds, data), original_bounds
+
+    def set_selection(self, mask: Image, bounds: Bounds):
+        assert mask.is_mask
+        selection = krita.Selection()
+        selection.setPixelData(mask.data, *bounds)
+        self._doc.setSelection(selection)
 
     def get_image(self, bounds: Bounds | None = None, exclude_layers: list[Layer] | None = None):
         excluded: list[Layer] = []

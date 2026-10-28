@@ -50,7 +50,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..backend.api import InpaintContext
+from ..backend.api import InpaintContext, SegmentMode
 from ..backend.resources import Arch
 from ..backend.workflow import FillMode, InpaintMode
 from ..image import Bounds, Extent, Image
@@ -65,7 +65,7 @@ from ..text import create_mode_label
 from ..style import Styles
 from ..util import client_logger as log
 from ..util import ensure, flatten, sequence_equal
-from . import theme
+from . import actions, theme
 from .region import RegionPromptWidget
 from .widget import (
     ErrorBox,
@@ -1404,6 +1404,7 @@ class GenerationWidget(QWidget):
         self.edit_menu = self._create_edit_menu()
         self.dlss5_canvas_menu = self._create_dlss5_menu(_("DLSS5 Enhance Canvas"), False)
         self.dlss5_selection_menu = self._create_dlss5_menu(_("DLSS5 Enhance Selection"), True)
+        self.ai_select_menu = self._create_ai_select_menu()
 
         self.region_mask_button = QToolButton(self)
         self.region_mask_button.setIcon(theme.icon("region-alpha"))
@@ -1757,6 +1758,33 @@ class GenerationWidget(QWidget):
             )
         return menu
 
+    def _create_ai_select_menu(self):
+        menu = theme.style_menu(QMenu(_("AI Select"), self))
+        menu.setIcon(theme.icon("control-segmentation"))
+        subject = ensure(menu.addAction(_("Select Subject"), lambda: self.model.select_subject()))
+        text = ensure(menu.addAction(_("Select by Text..."), actions.select_by_text))
+        menu.addSeparator()
+        remove = ensure(
+            menu.addAction(_("Remove Background"), lambda: self.model.remove_background())
+        )
+        remove.setToolTip(
+            _(
+                "Hide the background of the active layer with a transparency mask - nothing is erased"
+            )
+        )
+        menu.setToolTipsVisible(True)
+        self._ai_select_actions = {SegmentMode.subject: [subject, remove], SegmentMode.text: [text]}
+        return menu
+
+    def _update_ai_select_menu(self):
+        any_available = False
+        for mode, entries in self._ai_select_actions.items():
+            available = self.model.segment_available(mode)
+            any_available = any_available or available
+            for action in entries:
+                action.setEnabled(available)
+        return any_available
+
     def show_inpaint_menu(self):
         width = self.generate_button.width() + self.inpaint_mode_button.width()
         pos = QPoint(0, self.generate_button.height())
@@ -1788,6 +1816,8 @@ class GenerationWidget(QWidget):
             extra = [menu.addSeparator(), menu.addMenu(self.dlss5_canvas_menu)]
             if self.model.document.selection_bounds:
                 extra.append(menu.addMenu(self.dlss5_selection_menu))
+        if self._update_ai_select_menu():  # only with segmentation nodes on the server
+            extra += [menu.addSeparator(), menu.addMenu(self.ai_select_menu)]
 
         menu.setFixedWidth(width)
         menu.exec_(self.generate_button.mapToGlobal(pos))

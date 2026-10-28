@@ -663,6 +663,34 @@ much faster.
   just the prompt and sampler settings. For Generate (Custom), the
   Seamless/Focus/Edit/Fill/Context settings used are recorded too.
 
+### AI selection
+
+The arrow menu next to **Generate** has an **AI Select** submenu that runs a
+segmentation model on the ComfyUI server and hands the result back to Krita:
+
+* **Select Subject** — the main foreground object of the visible image
+  becomes the selection, with soft edges where the model is unsure.
+* **Select by Text...** — type what to select (`sky`, `water`, `the red car`)
+  and that becomes the selection. Uses CLIPSeg, which is fast but coarse:
+  edges follow a low-resolution grid, so treat it as a starting point and
+  refine with Krita's selection tools. It always selects the closest match,
+  even when the prompt names something that isn't in the picture.
+* **Remove Background** — adds a transparency mask to the active layer that
+  hides everything but its subject. Nothing is erased: paint on the mask to
+  fix the edges, or delete it to get the background back.
+
+All three are also Krita actions (Settings → Configure Krita → Keyboard
+Shortcuts → Scripts), so you can give them shortcuts. They run in the queue
+like any other job; the submenu only shows when the server has the nodes:
+
+* Subject / Remove Background: ComfyUI's built-in **RemoveBackground** when a
+  model is in `models/background_removal`, otherwise **easy imageRemBg** from
+  [ComfyUI-Easy-Use](https://github.com/yolain/ComfyUI-Easy-Use) with its
+  RMBG-1.4 model (`models/rembg/RMBG-1.4.pth`).
+* Select by Text: **BatchCLIPSeg** from
+  [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes); it downloads
+  the CLIPSeg model (about 300 MB) to `models/clip_seg` on first use.
+
 ### Custom workflows
 
 Ready-made Krita-adapted ComfyUI workflows live in
@@ -715,6 +743,9 @@ Some features require additional software:
 * Krea2 workflows: [comfyui-krea2edit](https://github.com/lbouaraba/comfyui-krea2edit) nodes
 * DLSS5 Enhance: [ComfyUI-DLSS5-Enhancer](https://github.com/Blueforcer/ComfyUI-DLSS5-Enhancer)
   nodes and their runtime (Windows, RTX 30+)
+* AI Select: [ComfyUI-Easy-Use](https://github.com/yolain/ComfyUI-Easy-Use)
+  (or a model for ComfyUI's built-in background removal) and
+  [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes) for Select by Text
 
 ---
 

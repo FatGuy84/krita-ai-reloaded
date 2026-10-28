@@ -15,7 +15,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, NamedTuple
 
 from PyQt5.QtCore import QMetaObject, QObject, Qt, QUuid, pyqtSignal
-from PyQt5.QtGui import QBrush, QColor, QPainter
+from PyQt5.QtGui import QBrush, QColor, QImage, QPainter
 
 from .. import eventloop, util
 from ..backend import resolution, workflow
@@ -29,6 +29,8 @@ from ..backend.api import (
     InpaintMode,
     InpaintParams,
     SamplingInput,
+    SegmentInput,
+    SegmentMode,
     UpscaleInput,
     WorkflowInput,
     WorkflowKind,
@@ -806,6 +808,8 @@ class DocumentModel(QObject, ObservableProperties):
                 job.control.layer_id = self.add_control_layer(job, message.result).id
             elif job.kind is JobKind.upscaling:
                 self.add_upscale_layer(job)
+            elif job.kind is JobKind.segmentation:
+                self._apply_segmentation(job)
             self._finish_job(job, message.event)
         elif message.event is ClientEvent.interrupted:
             self._finish_job(job, message.event)
@@ -1192,6 +1196,98 @@ class DocumentModel(QObject, ObservableProperties):
         params.batch_id = uuid.uuid4().hex
         job = self.jobs.add(JobKind.diffusion, params)
         eventloop.run(_report_errors(self, self._enqueue_job(job, input)))
+
+    def segment_available(self, mode: SegmentMode):
+        client = self._connection.client_if_connected
+        if client is None:
+            return False
+        nodes = client.models.node_inputs
+        if mode is SegmentMode.text:
+            return workflow.segment_text_node in nodes
+        return workflow.segment_easy_node in nodes or _segment_core_model(nodes) != ""
+
+    def select_subject(self):
+        self._segment(SegmentInput(SegmentMode.subject), _("Select Subject"))
+
+    def select_by_text(self, prompt: str):
+        prompt = prompt.strip()
+        if prompt:
+            self._segment(SegmentInput(SegmentMode.text, prompt), f"{_('Select')}: {prompt}")
+
+    def remove_background(self):
+        layer = self.layers.active
+        if layer.type.is_mask or layer.type is LayerType.filtermask:
+            layer = layer.parent_layer or layer
+        if layer.is_root:
+            self.report_error(_("Select the layer to remove the background from"))
+            return
+        self._segment(SegmentInput(SegmentMode.subject), _("Remove Background"), layer)
+
+    def _segment(self, params: SegmentInput, name: str, layer: Layer | None = None):
+        """Runs a segmentation model on the canvas (or one layer) and turns the mask into a
+        selection, or into a transparency mask on that layer once the job finishes."""
+        if not self.segment_available(params.mode):
+            self.report_error(_missing_segment_nodes[params.mode])
+            return
+        doc = self._doc
+        ok, msg = doc.check_color_mode()
+        if not ok and msg:
+            self.report_error(msg)
+            return
+        try:
+            self.clear_error()
+            if layer is None:
+                bounds = Bounds(0, 0, *doc.extent)
+                image = self._get_current_image(bounds)
+            else:
+                # Not clipped to the canvas: the mask must cover the whole layer, or the
+                # parts outside would vanish once the layer is moved.
+                bounds = layer.compute_bounds()
+                if bounds.is_zero:
+                    raise ValueError(_("The active layer is empty"))
+                image = layer.get_pixels(bounds)
+            client = self._connection.client
+            params.model = _segment_core_model(client.models.node_inputs)
+            input = workflow.prepare_segment(image, params)
+        except Exception as e:
+            self.report_error(util.log_error(e))
+            return
+
+        metadata = {
+            "segment": {
+                "mode": params.mode.name,
+                "prompt": params.prompt,
+                "layer": layer.id_string if layer else "",
+            }
+        }
+        job_params = JobParams(bounds, name, metadata=metadata)
+        job_params.workflow_kind = WorkflowKind.segment
+        job = self.jobs.add(JobKind.segmentation, job_params)
+        eventloop.run(_report_errors(self, self._enqueue_job(job, input)))
+
+    def _apply_segmentation(self, job: Job):
+        if len(job.results) == 0:
+            return
+        bounds = job.params.bounds
+        result = job.results[0]
+        if result.extent != bounds.extent:
+            result = Image.scale(result, bounds.extent)
+        mask = Image(result._qimage.convertToFormat(QImage.Format.Format_Grayscale8))
+        if mask.average() == 0:
+            self.report_error(Error(ErrorKind.warning, _("Nothing was found to select")))
+            return
+
+        layer_id = job.params.metadata.get("segment", {}).get("layer", "")
+        if not layer_id:
+            self._doc.set_selection(mask, bounds)
+            return
+        layer = self.layers.find(QUuid(layer_id))
+        if layer is None:
+            self.report_error(_("The layer to remove the background from no longer exists"))
+            return
+        # A transparency mask keeps the layer's pixels: paint on the mask to fix edges,
+        # or delete it to get the background back.
+        self.layers.create_mask(_("Background removed"), mask, bounds, parent=layer)
 
     def send_result_to_recipe(self, job_id: str, index: int):
         from ..backend.lora_manager import save_recipe
@@ -1843,6 +1939,22 @@ class AnimationWorkspace(QObject, ObservableProperties):
             bounds = Bounds(0, 0, *self._model.document.extent)
             image = layer.get_pixels(bounds)
             self.target_image_changed.emit(image)
+
+
+_missing_segment_nodes = {
+    SegmentMode.subject: _(
+        "Select Subject needs a background removal model on the server: the"
+        " ComfyUI-Easy-Use node pack, or a model in ComfyUI's models/background_removal"
+    ),
+    SegmentMode.text: _("Select by Text needs the ComfyUI-KJNodes node pack on the server"),
+}
+
+
+def _segment_core_model(nodes) -> str:
+    if workflow.segment_core_node not in nodes or workflow.segment_core_loader not in nodes:
+        return ""
+    models = nodes.options(workflow.segment_core_loader, "bg_removal_name")
+    return models[0] if models else ""
 
 
 def _dlss5_metadata(input: WorkflowInput, area: str):

@@ -21,6 +21,7 @@ class WorkflowKind(Enum):
     control_image = 6
     custom = 7
     dlss5_enhance = 8
+    segment = 9
 
 
 @dataclass
@@ -180,6 +181,22 @@ class Dlss5Input:
     model_preset: str = "M"
 
 
+class SegmentMode(Enum):
+    subject = 0  # salient foreground object
+    text = 1  # whatever the prompt describes, eg. "sky"
+
+
+@dataclass
+class SegmentInput:
+    mode: SegmentMode = SegmentMode.subject
+    prompt: str = ""
+    # Background removal model file for ComfyUI's core RemoveBackground node. Empty uses
+    # the comfyui-easy-use node with `easy_model` instead.
+    model: str = ""
+    easy_model: str = "RMBG-1.4"
+    threshold: float = 0.3  # text mode: drop matches weaker than this
+
+
 @dataclass
 class CustomStyleInput:
     models: CheckpointInput
@@ -209,6 +226,7 @@ class WorkflowInput:
     crop_upscale_extent: Extent | None = None
     upscale: UpscaleInput | None = None
     dlss5: Dlss5Input | None = None
+    segment: SegmentInput | None = None
     control_mode: ControlMode = ControlMode.reference
     batch_count: int = 1
     color_match: float = 0.0
@@ -262,7 +280,7 @@ class WorkflowInput:
 
     @property
     def cost(self):
-        if self.kind is WorkflowKind.control_image:
+        if self.kind in (WorkflowKind.control_image, WorkflowKind.segment):
             return 1
         if self.kind in (WorkflowKind.upscale_simple, WorkflowKind.dlss5_enhance):
             return 2

@@ -33,6 +33,7 @@ class JobKind(Enum):
     animation_batch = 4  # single frame as part of an animation batch
     animation_frame = 5  # just a single frame
     animation = 6  # full animation in one job
+    segmentation = 7  # AI selection / background removal, applied when finished
 
 
 @dataclass

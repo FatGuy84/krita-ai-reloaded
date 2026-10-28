@@ -37,6 +37,8 @@ from .api import (
     LoraInput,
     RegionInput,
     SamplingInput,
+    SegmentInput,
+    SegmentMode,
     UpscaleInput,
     WorkflowInput,
     WorkflowKind,
@@ -1452,6 +1454,50 @@ def dlss5_enhance(w: ComfyWorkflow, images: ImageInput, params: Dlss5Input):
     return w
 
 
+# AI selection. Prefers ComfyUI's core background removal when a model for it is
+# installed, otherwise the node from comfyui-easy-use, which brings its own RMBG models.
+segment_core_loader = "LoadBackgroundRemovalModel"
+segment_core_node = "RemoveBackground"
+segment_easy_node = "easy imageRemBg"  # optional node pack: yolain/ComfyUI-Easy-Use
+segment_text_node = "BatchCLIPSeg"  # optional node pack: kijai/ComfyUI-KJNodes
+# CLIPSeg works on a 352px grid and its processor misjudges large inputs, so the image
+# is shrunk first and the mask scaled back up smoothly instead of in blocks.
+segment_text_extent = Extent(512, 512)
+
+
+def segment(w: ComfyWorkflow, images: ImageInput, params: SegmentInput):
+    image = ensure(images.initial_image)
+    loaded = w.load_image(image)
+    if params.mode is SegmentMode.text:
+        small = image.extent.scale_keep_aspect(segment_text_extent).at_least(64)
+        scaled = w.scale_image(loaded, small, method="area")
+        mask = w.add(
+            segment_text_node,
+            2,
+            images=scaled,
+            text=params.prompt,
+            threshold=params.threshold,
+            binary_mask=False,
+            combine_mask=True,
+            use_cuda=True,
+        )[0]
+        mask = w.scale_mask(mask, image.extent)
+    elif params.model:
+        model = w.add(segment_core_loader, 1, bg_removal_name=params.model)
+        mask = w.add(segment_core_node, 1, bg_removal_model=model, image=loaded)
+    else:
+        mask = w.add(
+            segment_easy_node,
+            2,
+            images=loaded,
+            rem_mode=params.easy_model,
+            image_output="Hide",
+            save_prefix="krita_ai_segment",
+        )[1]
+    w.send_image(w.mask_to_image(mask))
+    return w
+
+
 def _dlss5_tiled(w: ComfyWorkflow, original: Output, extent: Extent, enhance):
     # DLSS5 tone maps every tile on its own, and not uniformly within a tile either, so
     # neighbouring tiles differ in brightness and colour along their seams. A whole-image
@@ -1978,6 +2024,13 @@ def prepare_dlss5_enhance(image: Image, style: str, mask: Image | None = None):
     return i
 
 
+def prepare_segment(image: Image, params: SegmentInput):
+    i = WorkflowInput(WorkflowKind.segment, ImageInput.from_extent(image.extent))
+    ensure(i.images).initial_image = image
+    i.segment = params
+    return i
+
+
 def prepare_create_control_image(
     image: Image,
     mode: ControlMode,
@@ -2052,6 +2105,8 @@ def create(i: WorkflowInput, models: ClientModels, comfy_mode=ComfyRunMode.serve
         return upscale_simple(workflow, i.image, ensure(i.upscale).model, i.upscale_factor)
     elif i.kind is WorkflowKind.dlss5_enhance:
         return dlss5_enhance(workflow, ensure(i.images), ensure(i.dlss5))
+    elif i.kind is WorkflowKind.segment:
+        return segment(workflow, ensure(i.images), ensure(i.segment))
     elif i.kind is WorkflowKind.upscale_tiled:
         return upscale_tiled(
             workflow,
