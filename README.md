@@ -173,8 +173,14 @@ and mention it in the prompt instead:
 Add @hat and @scarf to the girl
 ```
 
-Typing `@` opens a completion list with the names of the current reference
-layers. On generate, each `@name` is rewritten to the token the model expects,
+You can also skip the control layer: `@name` that matches no named reference
+picks up the **Krita layer** of that name (spaces become `_`, so "Red Hat" is
+`@Red_Hat`) and sends it as an extra reference. Typing `@` opens a completion
+list with reference names and, for edit models, layer names. This only works
+with models that take reference images — SD, SDXL, Illustrious, Anima & co.
+have no way to receive them, so there `@name` just becomes the plain name.
+
+On generate, each `@name` is rewritten to the token the model expects,
 counting images in the order they are sent (the canvas first when editing,
 then the reference layers in the order they are listed, then regional ones) — `image 2` for
 Flux 2 / Krea 2, `Picture 2` for Qwen Edit Plus. Names are case-insensitive and
@@ -182,7 +188,7 @@ saved with the document.
 
 Models that get a single stitched image (Flux Kontext, Qwen Edit) or no image
 numbering at all get the plain name, so the same prompt still reads naturally.
-An `@name` that matches no reference layer is left as typed and logged as a
+On edit models an `@name` that matches neither a reference nor a layer is left as typed and logged as a
 warning, and `a@b.com`-style text is never touched. Wildcards and
 `<lora:...>` tags are unaffected.
 

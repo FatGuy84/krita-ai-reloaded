@@ -171,20 +171,27 @@ def reference_name_mapping(names: list[str], start_index=1) -> dict[str, int]:
     return mapping
 
 
+def extract_reference_mentions(prompt: str):
+    mentions: dict[str, str] = {}
+    for match in pattern_reference_name.finditer(strip_prompt_comments(prompt)):
+        mentions.setdefault(match[1].lower(), match[1])
+    return list(mentions.values())
+
+
 def replace_reference_names(prompt: str, mapping: dict[str, int], replacement=""):
     """Rewrite @Name mentions to the token the model uses for its input images (eg.
-    "image {}"). Without a replacement (model has no numbered images) the mention becomes
-    the plain name. Unknown names are left as they are."""
+    "image {}"). Without a replacement (model has no numbered images) every mention becomes
+    the plain name. Otherwise unknown names are left as they are."""
 
     def replace(match: re.Match[str]):
         name = match[1]
+        if not replacement:
+            return name
         index = mapping.get(name.lower())
         if index is None:
             log.warning(f"Prompt mentions unknown reference @{name}")
             return match[0]
-        if replacement:
-            return replacement.format(index)
-        return name
+        return replacement.format(index)
 
     return pattern_reference_name.sub(replace, prompt)
 

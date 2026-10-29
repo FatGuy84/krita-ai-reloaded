@@ -62,7 +62,13 @@ from ..settings import (
     settings,
 )
 from ..style import Arch, Style, Styles
-from ..text import create_ai_generated_xmp, create_img_metadata, extract_layers
+from ..text import (
+    create_ai_generated_xmp,
+    create_img_metadata,
+    extract_layers,
+    extract_reference_mentions,
+    sanitize_reference_name,
+)
 from ..util import PluginError, clamp, ensure, trim_text, unique
 from ..util import client_logger as log
 from .connection import Connection, ConnectionState
@@ -1342,7 +1348,33 @@ class DocumentModel(QObject, ObservableProperties):
             add_refs(region.control, region_layers)
             layers.update(region_layers)
 
+        if self.arch.supports_edit:
+            self._add_mentioned_layers(cond)
         return cond, layers
+
+    def _add_mentioned_layers(self, cond: ConditioningInput):
+        # @Name that isn't a named reference control falls back to the Krita layer with that
+        # name. Appended last, so the image numbers of <layer:...> references stay valid.
+        controls = cond.control + [c for r in cond.regions for c in r.control]
+        named = {c.name.lower() for c in controls if c.name}
+        prompt = "\n".join([cond.positive] + [r.positive for r in cond.regions])
+        for mention in extract_reference_mentions(prompt):
+            if mention.lower() in named:
+                continue
+            key = mention.lower()
+            layer = next(
+                (
+                    l
+                    for l in self._doc.layers.images
+                    if sanitize_reference_name(l.name).lower() == key
+                ),
+                None,
+            )
+            if layer is not None:
+                ctrl = ControlLayer(self, ControlMode.reference, layer.id, 0)
+                ctrl.name = mention
+                cond.control.append(ctrl.to_api())
+                named.add(key)
 
     def _performance_settings(self, client: Client):
         result = client.performance_settings

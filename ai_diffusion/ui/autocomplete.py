@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QApplication, QCompleter, QPlainTextEdit, QStyle, QS
 from ..files import FileFilter
 from ..model.root import root
 from ..settings import settings
-from ..text import char16_index_to_str_index
+from ..text import char16_index_to_str_index, sanitize_reference_name
 from ..util import ensure, plugin_dir, user_data_dir
 
 
@@ -138,10 +138,17 @@ _tag_files = None
 
 
 def _reference_names():
-    regions = root.active_model.active_regions
+    model = root.active_model
+    regions = model.active_regions
     controls = list(regions.control) + [c for r in regions for c in r.control]
-    names = (c.name for c in controls if c.name and c.mode.is_ip_adapter)
-    return list(dict.fromkeys(names))
+    names = [c.name for c in controls if c.name and c.mode.is_ip_adapter]
+    if model.arch.supports_edit:  # @Name also resolves to Krita layers for edit models
+        names += [sanitize_reference_name(l.name) for l in reversed(model.layers.images)]
+    unique: dict[str, str] = {}
+    for name in names:
+        if name:
+            unique.setdefault(name.lower(), name)
+    return list(unique.values())
 
 
 class PromptAutoComplete:
