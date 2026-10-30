@@ -297,12 +297,12 @@ def _filter_by_arch(models: Iterable[ModelResource], archs: Arch | Iterable[Arch
 
 
 def _enabled_workloads(selected: list[str], required: Iterable[ModelResource], server: Server):
-    workloads = {arch: True for arch in Arch}
+    workloads = dict.fromkeys(Arch, True)
     for m in required:
         if not (m.id.string in selected or server.is_installed(m)):
             workloads[m.arch] = False
     if not workloads[Arch.all]:
-        workloads = {k: False for k in workloads}
+        workloads = dict.fromkeys(workloads, False)
     return workloads
 
 

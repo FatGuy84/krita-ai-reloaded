@@ -28,14 +28,15 @@ from PyQt5.QtWidgets import (
 )
 
 from .. import eventloop
-from ..text import format_option_group
 from ..backend import animadex
 from ..backend.animadex import Entry, Facet, SearchResult
 from ..backend.animadex_catalog import Catalog, ImportFailed, offline_facets, wildcard_lines
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
+from ..text import format_option_group
 from ..util import client_logger as log
+from ..util import ensure
 from ..wildcards import WildcardLibrary
 from . import theme
 
@@ -65,7 +66,7 @@ def _visible_range(grid: QListWidget, overscan: int = 24) -> range:
     count = grid.count()
     if count == 0:
         return range(0)
-    vp = grid.viewport().rect()
+    vp = ensure(grid.viewport()).rect()
     first = grid.indexAt(vp.topLeft())
     last = grid.indexAt(vp.bottomRight())
     start = first.row() if first.isValid() else 0
@@ -124,7 +125,7 @@ class AnimadexBrowser(QWidget):
             )
         )
         idx = self._source_combo.findData(settings.animadex_browser_source)
-        self._source_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._source_combo.setCurrentIndex(max(idx, 0))
         self._source_combo.currentIndexChanged.connect(self._on_source_changed)
 
         self._size_slider = QSlider(Qt.Orientation.Horizontal, self)
@@ -194,7 +195,7 @@ class AnimadexBrowser(QWidget):
         self._grid.itemDoubleClicked.connect(lambda _item: self._add_to_prompt())
         self._grid.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._grid.customContextMenuRequested.connect(self._show_context_menu)
-        self._grid.verticalScrollBar().valueChanged.connect(self._on_scroll)
+        ensure(self._grid.verticalScrollBar()).valueChanged.connect(self._on_scroll)
 
         self._thumb_timer = QTimer(self)
         self._thumb_timer.setSingleShot(True)
@@ -236,7 +237,7 @@ class AnimadexBrowser(QWidget):
             )
         )
         idx = self._format_combo.findData(settings.animadex_multi_format)
-        self._format_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._format_combo.setCurrentIndex(max(idx, 0))
         self._format_combo.currentIndexChanged.connect(self._on_format_changed)
         self._format_combo.setVisible(False)
 
@@ -346,7 +347,7 @@ class AnimadexBrowser(QWidget):
         for key, label in sorts:
             self._sort_combo.addItem(label, key)
         idx = self._sort_combo.findData(settings.animadex_browser_sort)
-        self._sort_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._sort_combo.setCurrentIndex(max(idx, 0))
         self._sort_combo.blockSignals(False)
 
     def _rebuild_facets(self):
@@ -464,7 +465,7 @@ class AnimadexBrowser(QWidget):
 
     def _on_scroll(self, value: int):
         self._thumb_timer.start()
-        bar = self._grid.verticalScrollBar()
+        bar = ensure(self._grid.verticalScrollBar())
         if not self._loading and self._result.has_more and value >= bar.maximum() - bar.pageStep():
             self._load_page(self._result.page + 1)
 
@@ -519,7 +520,7 @@ class AnimadexBrowser(QWidget):
         self._size = value
         self._apply_grid_size()
         for i in range(self._grid.count()):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             item.setSizeHint(self._grid.gridSize())
             item.setIcon(self._tile_icon(item.data(Qt.ItemDataRole.UserRole)))
         self._thumb_timer.start()
@@ -529,9 +530,9 @@ class AnimadexBrowser(QWidget):
         settings.save()
 
     def _load_visible_thumbs(self):
-        viewport = self._grid.viewport().rect()
+        viewport = ensure(self._grid.viewport()).rect()
         for i in _visible_range(self._grid):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             if item is None or not self._grid.visualItemRect(item).intersects(viewport):
                 continue
             entry: Entry = item.data(Qt.ItemDataRole.UserRole)
@@ -557,7 +558,7 @@ class AnimadexBrowser(QWidget):
         self._net_hint.setVisible(False)
         self._thumbs[entry.thumb_url] = pixmap
         for i in _visible_range(self._grid):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             if item is not None and item.data(Qt.ItemDataRole.UserRole) is entry:
                 item.setIcon(self._tile_icon(entry))
                 break
@@ -810,7 +811,7 @@ class AnimadexPickerDialog(QDialog):
 
         self.browser = AnimadexBrowser(self)
         close_btn = QPushButton(_("Close"), self)
-        close_btn.clicked.connect(self.close)
+        close_btn.clicked.connect(self.close)  # type: ignore (slot returns bool)
         bottom = QHBoxLayout()
         link = QLabel("<a href='https://animadex.net'>animadex.net</a>", self)
         link.setOpenExternalLinks(True)

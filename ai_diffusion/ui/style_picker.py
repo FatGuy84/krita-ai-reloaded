@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, QSize, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QEvent, QObject, QSize, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QIcon, QKeyEvent, QPainter, QPixmap
 from PyQt5.QtWidgets import (
     QCheckBox,
@@ -34,6 +34,7 @@ from ..model.connection import ConnectionState
 from ..model.root import root
 from ..settings import settings
 from ..style import Style, Styles, sort_recent_styles
+from ..util import ensure
 from . import theme
 from .generate_across import AcrossOptions, generate_across_styles
 from .generate_sets import GenerateSetBar
@@ -126,7 +127,7 @@ class StyleBrowser(QWidget):
         self._view_combo.addItem(_("List"), _VIEW_LIST)
         self._view_combo.addItem(_("Grid"), _VIEW_GRID)
         idx = self._view_combo.findData(self._view)
-        self._view_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._view_combo.setCurrentIndex(max(idx, 0))
         self._view_combo.currentIndexChanged.connect(self._set_view_mode)
         self._view_combo.currentIndexChanged.connect(self._save_view_setting)
 
@@ -134,7 +135,7 @@ class StyleBrowser(QWidget):
         self._sort_combo.addItem(_("Name"), _SORT_NAME)
         self._sort_combo.addItem(_("Date Added"), _SORT_DATE)
         idx = self._sort_combo.findData(settings.style_browser_sort)
-        self._sort_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._sort_combo.setCurrentIndex(max(idx, 0))
         self._sort_combo.currentIndexChanged.connect(self._apply_filter)
         self._sort_combo.currentIndexChanged.connect(self._save_sort_setting)
 
@@ -173,7 +174,7 @@ class StyleBrowser(QWidget):
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(120)
         self._preview_timer.timeout.connect(self._load_visible_previews)
-        if scrollbar := self._list.verticalScrollBar():
+        if scrollbar := ensure(self._list.verticalScrollBar()):
             scrollbar.valueChanged.connect(self._schedule_visible_previews)
 
         hint = QLabel(
@@ -328,11 +329,11 @@ class StyleBrowser(QWidget):
     def _load_visible_previews(self):
         # only touch items currently in the viewport - applying a cached preview is
         # cheap, only a cache miss triggers a network fetch (one per checkpoint)
-        viewport_rect = self._list.viewport().rect()
+        viewport_rect = ensure(self._list.viewport()).rect()
         if self._client() is None:
             return
         for i in _visible_range(self._list):  # only scan around the viewport
-            item = self._list.item(i)
+            item = ensure(self._list.item(i))
             if item is None or item.data(Qt.ItemDataRole.UserRole) is None:
                 continue
             if item.data(Qt.ItemDataRole.UserRole + 2):  # preview already applied
@@ -423,7 +424,7 @@ class StyleBrowser(QWidget):
         for family in families:
             self._arch_combo.addItem(family, family)
         idx = self._arch_combo.findData(current_arch)
-        self._arch_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._arch_combo.setCurrentIndex(max(idx, 0))
         self._arch_combo.blockSignals(False)
 
         self._apply_filter()
@@ -528,7 +529,7 @@ class StyleBrowser(QWidget):
         if style := Styles.list().find(filename):
             self._current = style
             self.style_selected.emit(style)
-            self.window().close()  # picking a style is the point - close the window
+            ensure(self.window()).close()  # picking a style is the point - close the window
 
     def _selected_style(self) -> Style | None:
         items = self._list.selectedItems()
@@ -561,7 +562,7 @@ class StyleBrowser(QWidget):
         found = set()
         first = None
         for i in range(self._list.count()):
-            item = self._list.item(i)
+            item = ensure(self._list.item(i))
             filename = item.data(Qt.ItemDataRole.UserRole)
             if filename in wanted:
                 item.setSelected(True)
@@ -620,7 +621,7 @@ class StyleBrowser(QWidget):
             _("Delete the style '{name}'? This removes its file and cannot be undone.").format(
                 name=style.name
             ),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.Yes | QMessageBox.Cancel,
         )
         if confirm == QMessageBox.StandardButton.Yes:
             Styles.list().delete(style)  # _reload runs via the changed signal
@@ -641,14 +642,14 @@ class StyleBrowser(QWidget):
             menu.addAction(_("Delete Style"), lambda: self._delete_style(style))
         menu.exec(self._list.mapToGlobal(pos))
 
-    def eventFilter(self, obj, event):
-        if obj is self._list and event.type() == QEvent.Type.ShortcutOverride:
-            assert isinstance(event, QKeyEvent)
-            if event.key() == Qt.Key.Key_F:
+    def eventFilter(self, a0: QObject | None, a1: QEvent | None) -> bool:
+        if a0 is self._list and a1 and a1.type() == QEvent.Type.ShortcutOverride:
+            assert isinstance(a1, QKeyEvent)
+            if a1.key() == Qt.Key.Key_F:
                 self._toggle_selected_favorite()
-                event.accept()
+                a1.accept()
                 return True
-        return super().eventFilter(obj, event)
+        return super().eventFilter(a0, a1)
 
 
 class StylePickerDialog(QDialog):
@@ -687,7 +688,7 @@ class StylePickerDialog(QDialog):
         self.checkpoints.styles_created.connect(lambda _count: self.styles._reload())
 
         close_btn = QPushButton(_("Close"), self)
-        close_btn.clicked.connect(self.close)
+        close_btn.clicked.connect(self.close)  # type: ignore (slot returns bool)
         bottom = QHBoxLayout()
         bottom.addStretch(1)
         bottom.addWidget(close_btn)

@@ -385,7 +385,7 @@ def get_inpaint_context(node: ComfyNode):
     return parse_enum(InpaintContext, ctx)
 
 
-ImageGenerator = Callable[[WorkflowInput | None], Awaitable[None | Literal[False] | WorkflowInput]]
+ImageGenerator = Callable[[WorkflowInput | None], Awaitable[Literal[False] | WorkflowInput | None]]
 
 
 class CustomGenerationMode(Enum):

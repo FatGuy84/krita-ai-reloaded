@@ -46,6 +46,7 @@ from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
 from ..text import format_option_group
+from ..util import ensure
 from ..wildcards import WildcardLibrary
 from . import theme
 
@@ -71,8 +72,19 @@ _NSFW_ALL = "all"
 _NSFW_SAFE = "safe"
 _NSFW_HIDE_EXPLICIT = "hide_explicit"
 _KNOWN_ARCHES = [
-    "sd15", "sdxl", "illu", "sd3", "flux", "flux_k",
-    "chroma", "qwen", "anima", "zimage", "ernie", "krea2", "moss",
+    "sd15",
+    "sdxl",
+    "illu",
+    "sd3",
+    "flux",
+    "flux_k",
+    "chroma",
+    "qwen",
+    "anima",
+    "zimage",
+    "ernie",
+    "krea2",
+    "moss",
 ]
 # full names for the base-model filter, matching the labels in the style editor
 _ARCH_LABELS = {
@@ -181,7 +193,7 @@ def _visible_range(grid, overscan: int = 24) -> range:
     count = grid.count()
     if count == 0:
         return range(0)
-    vp = grid.viewport().rect()
+    vp = ensure(grid.viewport()).rect()
     first = grid.indexAt(vp.topLeft())
     last = grid.indexAt(vp.bottomRight())
     start = first.row() if first.isValid() else 0
@@ -206,8 +218,11 @@ def _extract_video_frame(data: bytes) -> bytes | None:
         subprocess.run(
             [_ffmpeg_path, "-y", "-i", str(src), "-frames:v", "1", "-f", "image2", str(out)],
             capture_output=True,
+            check=False,
             timeout=20,
-            creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
+            creationflags=subprocess.CREATE_NO_WINDOW
+            if hasattr(subprocess, "CREATE_NO_WINDOW")
+            else 0,
         )
         if out.exists() and out.stat().st_size > 0:
             return out.read_bytes()
@@ -267,7 +282,7 @@ class LoraBrowser(QWidget):
         for arch in sorted(_KNOWN_ARCHES, key=lambda a: _ARCH_LABELS.get(a, a)):
             self._arch_combo.addItem(_ARCH_LABELS.get(arch, arch), arch)
         idx = self._arch_combo.findData(current_arch)
-        self._arch_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._arch_combo.setCurrentIndex(max(idx, 0))
         self._arch_combo.currentIndexChanged.connect(self._apply_filter)
 
         tag_label = QLabel(_("Tag:"), self)
@@ -295,7 +310,7 @@ class LoraBrowser(QWidget):
         self._sort_combo.addItem(_("Name"), _SORT_NAME)
         self._sort_combo.addItem(_("Date Added"), _SORT_DATE)
         idx = self._sort_combo.findData(settings.lora_browser_sort)
-        self._sort_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._sort_combo.setCurrentIndex(max(idx, 0))
         self._sort_combo.currentIndexChanged.connect(self._apply_filter)
         self._sort_combo.currentIndexChanged.connect(self._save_sort_setting)
 
@@ -338,7 +353,7 @@ class LoraBrowser(QWidget):
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(120)
         self._preview_timer.timeout.connect(self._load_visible_previews)
-        self._grid.verticalScrollBar().valueChanged.connect(self._schedule_visible_previews)
+        ensure(self._grid.verticalScrollBar()).valueChanged.connect(self._schedule_visible_previews)
 
         # ── bottom bar ──
         self._selected_label = QLabel(_("No LoRA selected"), self)
@@ -398,7 +413,9 @@ class LoraBrowser(QWidget):
 
         self._copy_btn = QPushButton(_("Copy"), self)
         self._copy_btn.setEnabled(False)
-        self._copy_btn.setToolTip(_("Copy the tags to the clipboard instead of adding to the prompt"))
+        self._copy_btn.setToolTip(
+            _("Copy the tags to the clipboard instead of adding to the prompt")
+        )
         self._copy_btn.clicked.connect(self._copy_to_clipboard)
 
         self._save_wildcard_btn = QPushButton(_("Save as Wildcard…"), self)
@@ -552,7 +569,7 @@ class LoraBrowser(QWidget):
         for tag in top_tags:
             self._tag_combo.addItem(f"{tag} ({counts[tag]})", tag)
         idx = self._tag_combo.findData(current)
-        self._tag_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._tag_combo.setCurrentIndex(max(idx, 0))
         self._tag_combo.blockSignals(False)
 
     def _apply_filter(self):
@@ -637,7 +654,10 @@ class LoraBrowser(QWidget):
         size = self._preview_size
         if lora.sha256 in self._preview_cache:
             return self._preview_cache[lora.sha256].scaled(
-                size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                size,
+                size,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
             )
         if lora.preview_url and _is_video_url(lora.preview_url):
             return theme.icon("play").pixmap(size, size)
@@ -650,7 +670,9 @@ class LoraBrowser(QWidget):
         item.setIcon(
             QIcon(
                 _with_badges(
-                    self._tile_base(lora), lora.favorite, lora.commercial,
+                    self._tile_base(lora),
+                    lora.favorite,
+                    lora.commercial,
                     _base_model_label(lora.base_model),
                 )
             )
@@ -661,7 +683,7 @@ class LoraBrowser(QWidget):
         self._grid.setIconSize(QSize(value, value))
         self._grid.setGridSize(QSize(value + 16, value + 40))
         for i in range(self._grid.count()):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             lora: LoraInfo = item.data(Qt.ItemDataRole.UserRole)
             item.setSizeHint(self._grid.gridSize())
             self._set_tile_icon(item, lora)
@@ -681,20 +703,24 @@ class LoraBrowser(QWidget):
         self._preview_timer.start()
 
     def _load_visible_previews(self):
-        viewport_rect = self._grid.viewport().rect()
+        viewport_rect = ensure(self._grid.viewport()).rect()
         client = root.connection.client_if_connected
         if client is None:
             return
         # only scan around the viewport - iterating all items (up to thousands of
         # LoRAs) with visualItemRect on every scroll tick is what made it lag
         for i in _visible_range(self._grid):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             rect = self._grid.visualItemRect(item)
             if not rect.intersects(viewport_rect):
                 continue
             lora: LoraInfo = item.data(Qt.ItemDataRole.UserRole)
             # commercial-use badge (lazy, per-model metadata call)
-            if lora.commercial == "" and lora.file_path and lora.sha256 not in self._pending_commercial:
+            if (
+                lora.commercial == ""
+                and lora.file_path
+                and lora.sha256 not in self._pending_commercial
+            ):
                 self._pending_commercial.add(lora.sha256)
                 eventloop.run(self._load_commercial(lora, item))
             if not lora.preview_url or lora.sha256 in self._preview_cache:
@@ -771,7 +797,8 @@ class LoraBrowser(QWidget):
             QMessageBox.information(self, _("Saved"), f"__{key}__ " + _("created."))
         else:
             QMessageBox.warning(
-                self, _("Save Failed"),
+                self,
+                _("Save Failed"),
                 _("Could not create the wildcard file - a file with that name may already exist."),
             )
 
@@ -949,7 +976,7 @@ class LoraPickerDialog(QDialog):
         self._tabs.addTab(self.civitai, _("CivitAI"))
 
         close_btn = QPushButton(_("Close"), self)
-        close_btn.clicked.connect(self.close)
+        close_btn.clicked.connect(self.close)  # type: ignore (slot returns bool)
         bottom = QHBoxLayout()
         bottom.addStretch(1)
         bottom.addWidget(close_btn)

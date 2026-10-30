@@ -908,7 +908,7 @@ class ImageCollection:
         images = ImageCollection()
         buffer = QBuffer(data)
         buffer.open(QBuffer.OpenModeFlag.ReadOnly)
-        for i, offset in enumerate(offsets):
+        for offset in offsets:
             buffer.seek(offset)
             images.append(Image.from_bytes(buffer))
         buffer.close()

@@ -39,6 +39,7 @@ from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
 from ..style import Styles
+from ..util import ensure
 from . import theme
 from .generate_across import AcrossOptions, generate_across_checkpoints
 from .generate_sets import GenerateSetBar
@@ -165,7 +166,7 @@ class CheckpointBrowser(QWidget):
         self._sort_combo.addItem(_("Name"), _SORT_NAME)
         self._sort_combo.addItem(_("Date Added"), _SORT_DATE)
         idx = self._sort_combo.findData(settings.checkpoint_browser_sort)
-        self._sort_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._sort_combo.setCurrentIndex(max(idx, 0))
         self._sort_combo.currentIndexChanged.connect(self._apply_filter)
         self._sort_combo.currentIndexChanged.connect(self._save_sort_setting)
 
@@ -205,7 +206,7 @@ class CheckpointBrowser(QWidget):
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(120)
         self._preview_timer.timeout.connect(self._load_visible_previews)
-        self._grid.verticalScrollBar().valueChanged.connect(self._schedule_visible_previews)
+        ensure(self._grid.verticalScrollBar()).valueChanged.connect(self._schedule_visible_previews)
 
         # ── bottom bar: template + create ──
         template_label = QLabel(_("Template style:"), self)
@@ -329,7 +330,7 @@ class CheckpointBrowser(QWidget):
         for bm in bases:
             self._base_combo.addItem(bm, bm)
         idx = self._base_combo.findData(current)
-        self._base_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._base_combo.setCurrentIndex(max(idx, 0))
         self._base_combo.blockSignals(False)
 
     def _apply_filter(self):
@@ -430,7 +431,7 @@ class CheckpointBrowser(QWidget):
         self._grid.setIconSize(QSize(value, value))
         self._grid.setGridSize(QSize(value + 16, value + 40))
         for i in range(self._grid.count()):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             c: LoraInfo = item.data(Qt.ItemDataRole.UserRole)
             item.setSizeHint(self._grid.gridSize())
             self._set_tile_icon(item, c)
@@ -450,12 +451,12 @@ class CheckpointBrowser(QWidget):
         self._preview_timer.start()
 
     def _load_visible_previews(self):
-        viewport_rect = self._grid.viewport().rect()
+        viewport_rect = ensure(self._grid.viewport()).rect()
         client = root.connection.client_if_connected
         if client is None:
             return
         for i in _visible_range(self._grid):  # only scan around the viewport
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             if not self._grid.visualItemRect(item).intersects(viewport_rect):
                 continue
             c: LoraInfo = item.data(Qt.ItemDataRole.UserRole)
@@ -609,7 +610,7 @@ class CheckpointBrowser(QWidget):
             self,
             _("Create Styles from Checkpoints"),
             _("Create {n} styles from template '{t}'?").format(n=len(items), t=template_name),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.Yes | QMessageBox.Cancel,
         )
         if confirm != QMessageBox.StandardButton.Yes:
             return
@@ -666,7 +667,7 @@ class CheckpointBrowser(QWidget):
         found = set()
         first = None
         for i in range(self._grid.count()):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             name = item.data(Qt.ItemDataRole.UserRole).name
             if name in wanted:
                 item.setSelected(True)

@@ -270,8 +270,8 @@ class ModelSync:
         if prev_task is not None:
             try:
                 await prev_task
-            except Exception:
-                pass  # already logged by the task that failed
+            except Exception:  # noqa: S110 - already logged by the task that failed
+                pass
         try:
             if settings.multi_threading:
                 loop = asyncio.get_running_loop()

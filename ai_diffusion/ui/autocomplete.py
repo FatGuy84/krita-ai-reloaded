@@ -278,7 +278,7 @@ class PromptAutoComplete:
         if prefix.startswith("<lora:"):
             if file := root.files.loras.find(f"{completion}.safetensors"):
                 triggers = " " + file.meta("lora_triggers", "")
-        elif prefix.startswith("<layer:") or prefix.startswith("@"):
+        elif prefix.startswith(("<layer:", "@")):
             pass
         else:  # tag completion
             # escape () in tags so they won't be interpreted as prompt weights

@@ -6,7 +6,6 @@ from textwrap import wrap as wrap_text
 from typing import ClassVar, cast
 
 from krita import Krita
-
 from PyQt5.QtCore import (
     QEvent,
     QItemSelectionModel,
@@ -61,8 +60,8 @@ from ..model.properties import Bind, Binding, bind, bind_combo, bind_toggle
 from ..model.region import RootRegion
 from ..model.root import root
 from ..settings import settings
-from ..text import create_mode_label
 from ..style import Styles
+from ..text import create_mode_label
 from ..util import client_logger as log
 from ..util import ensure, flatten, sequence_equal
 from . import actions, theme
@@ -844,7 +843,7 @@ class HistoryWidget(QListWidget):
             menu.addAction(_("Info to Clipboard"), self._info_to_clipboard)
             menu.addSeparator()
             if self._model.dlss5_available:  # only with the optional DLSS5 node pack
-                dlss5_menu = menu.addMenu(_("DLSS5 Enhance"))
+                dlss5_menu = ensure(menu.addMenu(_("DLSS5 Enhance")))
                 for style in ("Cinematic", "Default", "Natural"):
                     dlss5_menu.addAction(_(style), self._make_dlss5_enhancer(style))
                 menu.addSeparator()
@@ -853,7 +852,7 @@ class HistoryWidget(QListWidget):
             fav_label = _("Remove from Favorites") if is_fav else _("Mark as Favorite")
             menu.addAction(fav_label + "\tF", self._toggle_favorite)
             current_rating = job.rating(index or 0) if job is not None else 0
-            rating_menu = menu.addMenu(_("Set Rating"))
+            rating_menu = ensure(menu.addMenu(_("Set Rating")))
             for stars in range(1, 6):
                 label = "★" * stars + "☆" * (5 - stars)
                 action = ensure(

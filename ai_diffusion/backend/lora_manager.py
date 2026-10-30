@@ -83,7 +83,7 @@ class LoraInfo:
             version=version,
             civitai_model_id=civitai_model_id,
             nsfw_level=int(data.get("preview_nsfw_level") or 0),
-            favorite=bool(data.get("favorite", False)),
+            favorite=bool(data.get("favorite")),
             sha256=sha256,
             modified=float(data.get("modified") or 0.0),
             file_path=data.get("file_path", "") or "",
@@ -150,7 +150,11 @@ def load_cached_loras(base_url: str) -> list[LoraInfo] | None:
 def save_lora_cache(base_url: str, loras: list[LoraInfo]):
     path = _cache_path(base_url)
     try:
-        data = {"version": _CACHE_VERSION, "timestamp": time.time(), "loras": [asdict(l) for l in loras]}
+        data = {
+            "version": _CACHE_VERSION,
+            "timestamp": time.time(),
+            "loras": [asdict(l) for l in loras],
+        }
         path.write_text(json.dumps(data), encoding="utf-8")
     except Exception as e:
         log.warning(f"Could not save LoRA cache: {e}")
@@ -238,7 +242,9 @@ async def fetch_loras_pages(requests: RequestManager, base_url: str):
             result = []
             for entry in data:
                 if isinstance(entry, str):
-                    result.append(LoraInfo(name=_clean_name(entry), display_name=_clean_name(entry)))
+                    result.append(
+                        LoraInfo(name=_clean_name(entry), display_name=_clean_name(entry))
+                    )
                 elif isinstance(entry, dict):
                     result.append(LoraInfo.from_api(entry, base))
             if result:
@@ -399,7 +405,7 @@ class RecipeInfo:
             negative_prompt=gen.get("negative_prompt", ""),
             checkpoint=checkpoint,
             preview_url=preview,
-            favorite=bool(data.get("favorite", False)),
+            favorite=bool(data.get("favorite")),
             loras=loras,
             created_date=float(data.get("created_date") or data.get("modified") or 0.0),
         )
@@ -461,7 +467,10 @@ async def _lookup_lora_hash(requests: RequestManager, base: str, name: str) -> d
         items = data.get("items", []) if isinstance(data, dict) else []
         for item in items:
             if Path(str(item.get("file_name", ""))).stem == name:
-                return {"hash": (item.get("sha256") or "").lower(), "name": item.get("model_name", name)}
+                return {
+                    "hash": (item.get("sha256") or "").lower(),
+                    "name": item.get("model_name", name),
+                }
     except Exception as e:
         log.warning(f"Could not look up LoRA info for '{name}': {e}")
     return {}

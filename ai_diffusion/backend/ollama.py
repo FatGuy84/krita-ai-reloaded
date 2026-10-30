@@ -12,7 +12,8 @@ from PyQt5.QtCore import QByteArray, QUrl
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 
 from ..settings import settings
-from ..util import client_logger as log, plugin_dir, user_data_dir
+from ..util import client_logger as log
+from ..util import plugin_dir, user_data_dir
 from .network import NetworkError, RequestManager
 
 # Ollama runs as its own service, independent of the ComfyUI connection, so it gets
@@ -224,9 +225,10 @@ class Generation:
         reply, self._reply = self._reply, None
         if reply is None or self._future is None or self._future.done():
             return
-        if reply.error() == QNetworkReply.NetworkError.OperationCanceledError:
+        code = reply.error()  # type: ignore (bug in PyQt5-stubs)
+        if code == QNetworkReply.NetworkError.OperationCanceledError:
             self._future.cancel()
-        elif reply.error() != QNetworkReply.NetworkError.NoError:
+        elif code != QNetworkReply.NetworkError.NoError:
             self._future.set_exception(NetworkError.from_reply(reply))
         else:
             self._future.set_result(clean_response(self._text))
@@ -489,7 +491,9 @@ _negative_instruction = (
     " If the change excludes nothing, write 'NEGATIVE:' with nothing after it."
 )
 
-_negative_re = re.compile(r"^[ \t>*-]*\**negative(?: prompt)?\**\s*:\**[ \t]*", re.I | re.M)
+_negative_re = re.compile(
+    r"^[ \t>*-]*\**negative(?: prompt)?\**\s*:\**[ \t]*", re.IGNORECASE | re.MULTILINE
+)
 
 
 def split_negative(response: str) -> tuple[str, str]:

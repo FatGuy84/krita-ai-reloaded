@@ -25,7 +25,8 @@ from ..backend.network import NetworkError
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
-from ..util import client_logger as log, user_data_dir
+from ..util import client_logger as log
+from ..util import user_data_dir
 from ..wildcards import WildcardLibrary
 from . import theme
 

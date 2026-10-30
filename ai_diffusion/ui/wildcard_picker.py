@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from krita import Krita
-from PyQt5.QtCore import QFile, QUrl, Qt, pyqtSignal
+from PyQt5.QtCore import QFile, Qt, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -28,6 +28,7 @@ from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
 from ..text import format_option_group
+from ..util import ensure
 from ..wildcards import WildcardLibrary
 from . import theme
 
@@ -93,7 +94,7 @@ class WildcardBrowser(QWidget):
         self._sort_combo.addItem(_("Name"), _SORT_NAME)
         self._sort_combo.addItem(_("Date Added"), _SORT_DATE)
         idx = self._sort_combo.findData(settings.wildcard_browser_sort)
-        self._sort_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._sort_combo.setCurrentIndex(max(idx, 0))
         self._sort_combo.currentIndexChanged.connect(self._apply_filter)
         self._sort_combo.currentIndexChanged.connect(self._save_sort_setting)
 
@@ -316,14 +317,14 @@ class WildcardBrowser(QWidget):
             self,
             _("Unsaved Changes"),
             _("Discard unsaved changes to") + f" __{self._current_name}__?",
-            QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            QMessageBox.Discard | QMessageBox.Cancel,
             QMessageBox.StandardButton.Cancel,
         )
         return result == QMessageBox.StandardButton.Discard
 
     def _select_item_by_name(self, name: str | None):
         for i in range(self._list.count()):
-            item = self._list.item(i)
+            item = ensure(self._list.item(i))
             if item is not None and item.data(Qt.ItemDataRole.UserRole) == name:
                 self._list.setCurrentItem(item)
                 return
@@ -407,7 +408,7 @@ class WildcardBrowser(QWidget):
             self,
             _("Delete Wildcard"),
             _("Move") + f" __{name}__ ({count} " + _("lines") + ") " + _("to the trash?"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.Yes | QMessageBox.Cancel,
             QMessageBox.StandardButton.Cancel,
         )
         if answer != QMessageBox.StandardButton.Yes:
@@ -505,7 +506,7 @@ class WildcardPickerDialog(QDialog):
         self._tabs.addTab(self.generator, _("Generate"))
 
         close_btn = QPushButton(_("Close"), self)
-        close_btn.clicked.connect(self.close)
+        close_btn.clicked.connect(self.close)  # type: ignore (slot returns bool)
         bottom = QHBoxLayout()
         bottom.addStretch(1)
         bottom.addWidget(close_btn)
@@ -522,7 +523,7 @@ class WildcardPickerDialog(QDialog):
 
     def closeEvent(self, a0):
         if not self.library.may_close():
-            a0.ignore()
+            ensure(a0).ignore()
             return
         self.generator.shutdown()
         super().closeEvent(a0)

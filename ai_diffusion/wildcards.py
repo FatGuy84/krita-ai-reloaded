@@ -6,8 +6,8 @@ folder in directly and it works with no extra setup."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from .util import client_logger as log
 from .util import user_data_dir

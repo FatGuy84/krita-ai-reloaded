@@ -43,7 +43,8 @@ from ..model.properties import Binding, bind
 from ..model.region import Region, RegionLink, RootRegion, translate_prompt
 from ..model.root import root
 from ..text import char16_index_to_str_index, format_option_group, str_index_to_char16_index
-from ..util import client_logger as log, ensure
+from ..util import client_logger as log
+from ..util import ensure
 from . import theme
 from .control import ControlListWidget
 from .lora_picker import LoraPickerDialog
@@ -647,8 +648,10 @@ class ActiveRegionWidget(QFrame):
     def _create_enhance_menu(self):
         menu = theme.style_menu(QMenu(self))
         menu.addAction(_("Enhance"), partial(self._enhance, EnhanceTask.enhance))
-        self._enhance_selection_action = menu.addAction(
-            _("Enhance selection"), partial(self._enhance, EnhanceTask.enhance, "", True)
+        self._enhance_selection_action = ensure(
+            menu.addAction(
+                _("Enhance selection"), partial(self._enhance, EnhanceTask.enhance, "", True)
+            )
         )
         self._enhance_selection_action.setVisible(False)
         # Grouped by kind - prompt rewrites, image captions, dialogs, undo - and alphabetical
@@ -666,16 +669,18 @@ class ActiveRegionWidget(QFrame):
         )
         menu.addSeparator()
         menu.addAction(_("Describe the image"), partial(self._enhance, EnhanceTask.describe))
-        self._describe_selection_action = menu.addAction(
-            _("Describe current selection"),
-            partial(self._enhance, EnhanceTask.describe, "", False, True),
+        self._describe_selection_action = ensure(
+            menu.addAction(
+                _("Describe current selection"),
+                partial(self._enhance, EnhanceTask.describe, "", False, True),
+            )
         )
         self._describe_selection_action.setVisible(False)
         menu.addSeparator()
         menu.addAction(_("Modify with instruction..."), self._ask_instruction)
         menu.addAction(_("Prompt batch for generation..."), self._open_prompt_batch)
         menu.addSeparator()
-        self._revert_action = menu.addAction(_("Revert"), self._revert_enhance)
+        self._revert_action = ensure(menu.addAction(_("Revert"), self._revert_enhance))
         self._revert_action.setEnabled(False)
         menu.aboutToShow.connect(self._update_enhance_selection_visibility)
         return menu
@@ -838,9 +843,9 @@ class ActiveRegionWidget(QFrame):
             count = max(2, settings.ollama_variation_count)
             to_negative = to_negative and isinstance(region, RootRegion)
             request = ollama.build_prompt(task, protected.text, count, instruction, to_negative)
-            images = (
-                [_canvas_image(model, canvas_selection)] if task is EnhanceTask.describe else None
-            )
+            images = None
+            if task is EnhanceTask.describe:  # selection presence was checked on entry
+                images = [ensure(_canvas_image(model, canvas_selection))]
 
             if settings.ollama_free_comfy_vram:
                 if client := root.connection.client_if_connected:
@@ -970,10 +975,10 @@ class ActiveRegionWidget(QFrame):
         self._animadex_dialog.activateWindow()
 
     def _open_prompt_picker(self):
-        self._ensure_prompt_dialog()
-        self._prompt_dialog.show()
-        self._prompt_dialog.raise_()
-        self._prompt_dialog.activateWindow()
+        dialog = self._ensure_prompt_dialog()
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
     def _ensure_prompt_dialog(self):
         from .prompt_picker import PromptPickerDialog
@@ -1073,7 +1078,7 @@ class InstructionDialog(QDialog):
             self.move(center - QPoint(self.width() // 2, self.height() // 2))
 
     def keyPressEvent(self, a0):
-        ctrl = a0 is not None and a0.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ctrl = a0 is not None and bool(a0.modifiers() & Qt.KeyboardModifier.ControlModifier)
         if ctrl and a0 is not None and a0.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.accept()
         else:

@@ -46,6 +46,7 @@ from ..backend.lora_manager import (
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
+from ..util import ensure
 from . import theme
 from .lora_picker import (
     _ARCH_LABELS,
@@ -231,7 +232,7 @@ class CivitaiBrowser(QWidget):
         for arch in sorted(civitai.civitai_base_models, key=lambda a: _ARCH_LABELS.get(a, a)):
             self._arch_combo.addItem(_ARCH_LABELS.get(arch, arch), arch)
         index = self._arch_combo.findData(current_arch)
-        self._arch_combo.setCurrentIndex(index if index >= 0 else 0)
+        self._arch_combo.setCurrentIndex(max(index, 0))
         self._arch_combo.currentIndexChanged.connect(self._start_search)
 
         self._tag_combo = QComboBox(self)
@@ -246,14 +247,14 @@ class CivitaiBrowser(QWidget):
             )
         )
         self._tag_combo.currentIndexChanged.connect(self._start_search)
-        self._tag_combo.lineEdit().returnPressed.connect(self._start_search)
+        ensure(self._tag_combo.lineEdit()).returnPressed.connect(self._start_search)
 
         self._nsfw_combo = QComboBox(self)
         self._nsfw_combo.addItem(_("Safe only"), _NSFW_SAFE)
         self._nsfw_combo.addItem(_("Hide explicit"), _NSFW_HIDE_EXPLICIT)
         self._nsfw_combo.addItem(_("All ratings"), _NSFW_ALL)
         nsfw_index = self._nsfw_combo.findData(settings.civitai_nsfw_filter)
-        self._nsfw_combo.setCurrentIndex(nsfw_index if nsfw_index >= 0 else 0)
+        self._nsfw_combo.setCurrentIndex(max(nsfw_index, 0))
         self._nsfw_combo.setToolTip(
             _(
                 "Content rating limit for CivitAI results. The starting value comes from"
@@ -317,7 +318,7 @@ class CivitaiBrowser(QWidget):
         self._grid.customContextMenuRequested.connect(self._show_context_menu)
         self._grid.itemSelectionChanged.connect(self._on_selection_changed)
         self._grid.itemDoubleClicked.connect(lambda _item: self._download_selected())
-        self._grid.verticalScrollBar().valueChanged.connect(self._on_scrolled)
+        ensure(self._grid.verticalScrollBar()).valueChanged.connect(self._on_scrolled)
 
         self._preview_timer = QTimer(self)
         self._preview_timer.setSingleShot(True)
@@ -361,7 +362,7 @@ class CivitaiBrowser(QWidget):
             )
         )
         self._folder_combo.currentIndexChanged.connect(self._save_location_setting)
-        self._folder_combo.lineEdit().editingFinished.connect(self._save_location_setting)
+        ensure(self._folder_combo.lineEdit()).editingFinished.connect(self._save_location_setting)
 
         location_row = QHBoxLayout()
         location_row.addWidget(QLabel(_("Save to:"), self))
@@ -463,7 +464,7 @@ class CivitaiBrowser(QWidget):
             for entry in roots:
                 self._root_combo.addItem(entry, entry)
             index = self._root_combo.findData(settings.civitai_download_root)
-            self._root_combo.setCurrentIndex(index if index >= 0 else 0)
+            self._root_combo.setCurrentIndex(max(index, 0))
         with theme.SignalBlocker(self._folder_combo):
             self._folder_combo.clear()
             self._folder_combo.addItem(_("(root folder)"), "")
@@ -618,7 +619,7 @@ class CivitaiBrowser(QWidget):
 
     def _on_scrolled(self, value: int):
         self._schedule_visible_previews()
-        scroll = self._grid.verticalScrollBar()
+        scroll = ensure(self._grid.verticalScrollBar())
         near_bottom = value >= scroll.maximum() - scroll.pageStep() // 2
         if near_bottom and self._cursor and not self._loading:
             self._fetch_page()
@@ -663,7 +664,7 @@ class CivitaiBrowser(QWidget):
         }
         # appending a page rebuilds the grid - keep the viewport where it was, or
         # loading more results would yank the user back to the top
-        scroll = self._grid.verticalScrollBar().value()
+        scroll = ensure(self._grid.verticalScrollBar()).value()
         # rebuilding re-emits selection changes, which would reset the version combo
         visible = self._visible_models()
         names = [model.name for model, _version in visible]
@@ -683,7 +684,7 @@ class CivitaiBrowser(QWidget):
                     item.setSelected(True)
         # the grid lays out asynchronously, so the scroll position only sticks once
         # the new items have been arranged
-        QTimer.singleShot(0, lambda: self._grid.verticalScrollBar().setValue(scroll))
+        QTimer.singleShot(0, lambda: ensure(self._grid.verticalScrollBar()).setValue(scroll))
         total = len(self._models)
         shown = self._grid.count()
         if self._loading:
@@ -745,7 +746,7 @@ class CivitaiBrowser(QWidget):
         self._grid.setIconSize(QSize(value, value))
         self._grid.setGridSize(QSize(value + 16, value + 44))
         for i in range(self._grid.count()):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             model: CivitaiModel = item.data(Qt.ItemDataRole.UserRole)
             item.setSizeHint(self._grid.gridSize())
             if model.versions:
@@ -758,9 +759,9 @@ class CivitaiBrowser(QWidget):
         self._preview_timer.start()
 
     def _load_visible_previews(self):
-        viewport = self._grid.viewport().rect()
+        viewport = ensure(self._grid.viewport()).rect()
         for i in _visible_range(self._grid):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             if item is None or not self._grid.visualItemRect(item).intersects(viewport):
                 continue
             model: CivitaiModel = item.data(Qt.ItemDataRole.UserRole)
@@ -907,7 +908,7 @@ class CivitaiBrowser(QWidget):
             triggers = ", ".join(version.trained_words)
             menu.addAction(
                 _("Copy trigger words"),
-                lambda: QGuiApplication.clipboard().setText(triggers),
+                lambda: ensure(QGuiApplication.clipboard()).setText(triggers),
             )
         menu.exec(self._grid.mapToGlobal(pos))
 

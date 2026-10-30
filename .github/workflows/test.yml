@@ -20,7 +20,7 @@ jobs:
       - name: Typecheck
         uses: jakebailey/pyright-action@v1
         with:
-          pylance-version: latest-release
+          version: 1.1.414  # keep in step with requirements.txt
       - name: Format
         if: ${{ !cancelled() }}
         run: ruff format --diff
@@ -29,7 +29,8 @@ jobs:
         run: ruff check --output-format=github
   
   test:
-    timeout-minutes: 20
+    # the Ubuntu installer test usually takes ~10 minutes but has hit 18 on slow runners
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

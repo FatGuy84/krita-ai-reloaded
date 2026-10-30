@@ -17,9 +17,9 @@ import io
 import json
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 from urllib.parse import quote
 
 from .. import util

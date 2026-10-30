@@ -70,7 +70,7 @@ class StrengthSweepDialog(QDialog):
         self._button = QPushButton(self)
         self._button.clicked.connect(self._generate)
         cancel = QPushButton(_("Close"), self)
-        cancel.clicked.connect(self.close)
+        cancel.clicked.connect(self.close)  # type: ignore (slot returns bool)
         buttons = QHBoxLayout()
         buttons.addStretch()
         buttons.addWidget(cancel)

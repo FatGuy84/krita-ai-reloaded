@@ -82,7 +82,7 @@ def merge_prompt(prompt: str, style_prompt: str, language: str = ""):
         prompt = f"lang:{language} {prompt} lang:en "
     if style_prompt == "":
         return prompt
-    elif "{prompt}" in style_prompt:
+    elif "{prompt}" in style_prompt:  # noqa: RUF027 - literal placeholder
         return style_prompt.replace("{prompt}", prompt)
     elif prompt == "":
         return style_prompt

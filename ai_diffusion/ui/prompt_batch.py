@@ -25,7 +25,6 @@ from PyQt5.QtWidgets import (
 )
 
 from .. import eventloop
-from ..text import format_option_group
 from ..backend import ollama
 from ..backend.network import NetworkError
 from ..backend.ollama import PoolMode
@@ -33,7 +32,9 @@ from ..localization import translate as _
 from ..model.region import Region, RootRegion
 from ..model.root import root
 from ..settings import settings
-from ..util import client_logger as log, user_data_dir
+from ..text import format_option_group
+from ..util import client_logger as log
+from ..util import user_data_dir
 from ..wildcards import WildcardLibrary
 from . import theme
 

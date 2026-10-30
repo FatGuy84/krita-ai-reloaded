@@ -426,8 +426,7 @@ class LoraList(QWidget):
             for lora in root.files.loras:
                 if lora.source is not FileSource.unavailable:
                     parts = Path(lora.id).parts
-                    for i in range(1, len(parts)):
-                        folders.add("/".join(parts[:i]))
+                    folders.update("/".join(parts[:i]) for i in range(1, len(parts)))
             folder_icon = Krita.instance().icon("document-open")
             for folder in sorted(folders, key=lambda x: x.lower()):
                 self._filter_combo.addItem(folder_icon, folder)
@@ -943,7 +942,11 @@ class StylePresets(SettingsTab):
             if self.current_style.architecture in valid_archs:
                 self._arch_select.value = self.current_style.architecture
         detected = detect_base_model_family(self.current_style.checkpoints, arch)
-        hint = f" ({_('detected')}: {detected})" if self.current_style.base_model_family == "Auto" else ""
+        hint = (
+            f" ({_('detected')}: {detected})"
+            if self.current_style.base_model_family == "Auto"
+            else ""
+        )
         self._family_select.set_text(hint)
         self._clip_skip_check.setEnabled(arch.supports_clip_skip)
         self._clip_skip.enabled = arch.supports_clip_skip and self.current_style.clip_skip > 0

@@ -25,6 +25,7 @@ from ..localization import translate as _
 from ..model.root import root
 from ..prompt_library import PromptEntry, PromptLibrary
 from ..settings import settings
+from ..util import ensure
 from . import theme
 
 _POS_END = "end"
@@ -69,7 +70,7 @@ class PromptBrowser(QWidget):
         self._sort_combo.addItem(_("Recently Used"), _SORT_RECENT)
         self._sort_combo.addItem(_("Date Added"), _SORT_CREATED)
         idx = self._sort_combo.findData(settings.prompt_browser_sort)
-        self._sort_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._sort_combo.setCurrentIndex(max(idx, 0))
         self._sort_combo.currentIndexChanged.connect(self._apply_filter)
         self._sort_combo.currentIndexChanged.connect(self._save_sort_setting)
 
@@ -98,7 +99,7 @@ class PromptBrowser(QWidget):
 
         self._category_edit = QComboBox(self)
         self._category_edit.setEditable(True)
-        self._category_edit.lineEdit().setPlaceholderText(_("Category (optional)"))
+        ensure(self._category_edit.lineEdit()).setPlaceholderText(_("Category (optional)"))
         self._category_edit.editTextChanged.connect(self._on_edited)
 
         self._favorite_check = QCheckBox(_("Favorite"), self)
@@ -210,7 +211,7 @@ class PromptBrowser(QWidget):
         for category in self._library.categories():
             self._category_combo.addItem(category, category)
         idx = self._category_combo.findData(current)
-        self._category_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._category_combo.setCurrentIndex(max(idx, 0))
         self._category_combo.blockSignals(False)
 
         # the edit-panel category field: same list, but editable to allow a new one
@@ -285,7 +286,7 @@ class PromptBrowser(QWidget):
 
     def _select_item_by_id(self, id: str | None):
         for i in range(self._list.count()):
-            item = self._list.item(i)
+            item = ensure(self._list.item(i))
             if item is not None and item.data(Qt.ItemDataRole.UserRole) == id:
                 self._list.setCurrentItem(item)
                 return
@@ -354,7 +355,7 @@ class PromptBrowser(QWidget):
             self,
             _("Unsaved Changes"),
             _("Discard unsaved changes to this prompt?"),
-            QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            QMessageBox.Discard | QMessageBox.Cancel,
             QMessageBox.StandardButton.Cancel,
         )
         return result == QMessageBox.StandardButton.Discard
@@ -387,7 +388,7 @@ class PromptBrowser(QWidget):
                 self,
                 _("Delete Prompt"),
                 _("Delete") + f' "{title}"?',
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.StandardButton.No,
             )
             != QMessageBox.StandardButton.Yes
@@ -418,7 +419,7 @@ class PromptBrowser(QWidget):
         if not region.positive.strip():
             QMessageBox.information(self, _("Nothing to Save"), _("The active prompt is empty."))
             return
-        entry = self._library.add(_("New Prompt"), region.positive, negative=region.negative)
+        entry = self._library.add(_("New Prompt"), region.positive, negative=model.regions.negative)
         self._apply_filter()
         self._select_item_by_id(entry.id)
         self._title_edit.setFocus()
@@ -487,7 +488,7 @@ class PromptPickerDialog(QDialog):
         self.browser = PromptBrowser(self)
 
         close_btn = QPushButton(_("Close"), self)
-        close_btn.clicked.connect(self.close)
+        close_btn.clicked.connect(self.close)  # type: ignore (slot returns bool)
         bottom = QHBoxLayout()
         bottom.addStretch(1)
         bottom.addWidget(close_btn)
@@ -499,6 +500,6 @@ class PromptPickerDialog(QDialog):
 
     def closeEvent(self, a0):
         if self.browser._dirty and not self.browser._confirm_discard():
-            a0.ignore()
+            ensure(a0).ignore()
             return
         super().closeEvent(a0)

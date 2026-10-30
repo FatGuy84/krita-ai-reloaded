@@ -21,6 +21,7 @@ from ..util import PluginError, ensure
 from ..util import client_logger as log
 from .api import WorkflowInput
 from .comfy_workflow import ComfyObjectInfo
+from .network import RequestManager
 from .resources import Arch, ControlMode, CustomNode, ResourceId, ResourceKind, UpscalerName
 
 
@@ -393,6 +394,7 @@ class ClientFeatures:
 
 class Client(ABC):
     url: str
+    _requests: RequestManager
     models: ClientModels
     device_info: DeviceInfo
 

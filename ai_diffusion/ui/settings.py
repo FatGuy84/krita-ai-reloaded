@@ -33,9 +33,10 @@ from PyQt5.QtWidgets import (
 )
 
 from .. import __version__, eventloop, util
-from ..backend import resources
+from ..backend import ollama, resources
 from ..backend.client import Client, MissingResources, User
 from ..backend.cloud_client import CloudClient
+from ..backend.network import NetworkError
 from ..backend.resources import Arch, ResourceId
 from ..backend.server import Server, ServerState
 from ..localization import Localization
@@ -47,8 +48,6 @@ from ..model.updates import UpdateState
 from ..settings import ImageFileFormat, PerformancePreset, ServerMode, Settings, settings
 from ..style import Style
 from .server import ServerWidget
-from ..backend import ollama
-from ..backend.network import NetworkError
 from .settings_widgets import (
     ComboBoxSetting,
     FileListSetting,
@@ -780,10 +779,8 @@ class InterfaceSettings(SettingsTab):
         plugin_tags_path = util.plugin_dir / "tags"
         user_tags_path = util.user_data_dir / "tags"
         files = set()
-        for path in plugin_tags_path.glob("*.csv"):
-            files.add(path.stem)
-        for path in user_tags_path.glob("*.csv"):
-            files.add(path.stem)
+        files.update(path.stem for path in plugin_tags_path.glob("*.csv"))
+        files.update(path.stem for path in user_tags_path.glob("*.csv"))
 
         return list(files)
 

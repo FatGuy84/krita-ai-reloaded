@@ -24,6 +24,7 @@ from ..backend.lora_manager import RecipeInfo, fetch_preview_bytes, fetch_recipe
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
+from ..util import ensure
 from . import theme
 from .lora_picker import _visible_range
 
@@ -83,7 +84,7 @@ class RecipePickerDialog(QDialog):
         self._sort_combo.addItem(_("Name"), _SORT_NAME)
         self._sort_combo.addItem(_("Date Added"), _SORT_DATE)
         idx = self._sort_combo.findData(settings.recipe_browser_sort)
-        self._sort_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._sort_combo.setCurrentIndex(max(idx, 0))
         self._sort_combo.currentIndexChanged.connect(self._apply_filter)
         self._sort_combo.currentIndexChanged.connect(self._save_sort_setting)
 
@@ -121,7 +122,7 @@ class RecipePickerDialog(QDialog):
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(120)
         self._preview_timer.timeout.connect(self._load_visible_previews)
-        self._grid.verticalScrollBar().valueChanged.connect(self._schedule_visible_previews)
+        ensure(self._grid.verticalScrollBar()).valueChanged.connect(self._schedule_visible_previews)
 
         # ── bottom bar ──
         self._selected_label = QLabel(_("No recipe selected"), self)
@@ -143,7 +144,7 @@ class RecipePickerDialog(QDialog):
         self._replace_btn.clicked.connect(lambda: self._apply_recipe(replace=True))
 
         close_btn = QPushButton(_("Close"), self)
-        close_btn.clicked.connect(self.close)
+        close_btn.clicked.connect(self.close)  # type: ignore (slot returns bool)
 
         bottom_layout = QHBoxLayout()
         bottom_layout.addWidget(self._selected_label, 1)
@@ -202,7 +203,7 @@ class RecipePickerDialog(QDialog):
         for bm in base_models:
             self._arch_combo.addItem(bm, bm)
         idx = self._arch_combo.findData(current)
-        self._arch_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._arch_combo.setCurrentIndex(max(idx, 0))
         self._arch_combo.blockSignals(False)
 
     def _apply_filter(self):
@@ -269,7 +270,7 @@ class RecipePickerDialog(QDialog):
         self._grid.setIconSize(QSize(value, value))
         self._grid.setGridSize(QSize(value + 16, value + 40))
         for i in range(self._grid.count()):
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             recipe: RecipeInfo = item.data(Qt.ItemDataRole.UserRole)
             item.setSizeHint(self._grid.gridSize())
             if recipe.id in self._preview_cache:
@@ -290,12 +291,12 @@ class RecipePickerDialog(QDialog):
         self._preview_timer.start()
 
     def _load_visible_previews(self):
-        viewport_rect = self._grid.viewport().rect()
+        viewport_rect = ensure(self._grid.viewport()).rect()
         client = root.connection.client_if_connected
         if client is None:
             return
         for i in _visible_range(self._grid):  # only scan around the viewport
-            item = self._grid.item(i)
+            item = ensure(self._grid.item(i))
             rect = self._grid.visualItemRect(item)
             if not rect.intersects(viewport_rect):
                 continue

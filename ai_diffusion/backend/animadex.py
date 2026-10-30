@@ -45,7 +45,7 @@ def api_url(host: str = "") -> str:
 
 
 def _is_local(host: str) -> bool:
-    name = host.split("/")[0].split(":")[0].lower()
+    name = host.split("/", maxsplit=1)[0].split(":", maxsplit=1)[0].lower()
     return name in ("localhost", "127.0.0.1", "::1") or name.endswith(".local")
 
 
@@ -160,8 +160,8 @@ class Entry:
             source_url=str(data.get("url") or ""),
             thumb_url=str(data.get("thumb_url") or ""),
             image_url=str(data.get("img_url") or ""),
-            has_image=bool(data.get("has_image", False)),
-            is_hidden=bool(data.get("is_hidden", False)),
+            has_image=bool(data.get("has_image")),
+            is_hidden=bool(data.get("is_hidden")),
             loras=[Lora.from_api(l) for l in loras if isinstance(l, dict)],
             up_votes=int(rating.get("up") or 0),
             down_votes=int(rating.get("down") or 0),

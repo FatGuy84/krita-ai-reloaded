@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, NamedTuple
+from typing import ClassVar, NamedTuple
 
 from PyQt5.QtCore import QObject, QRect, Qt
 from PyQt5.QtGui import QColor, QFont, QPainter
@@ -98,7 +99,7 @@ class _CompareRun(QObject):
     """Collects the results of one "generate across" as the jobs finish, then adds
     them as layers and/or a labelled grid. Outlives the browser that started it."""
 
-    _active: set[_CompareRun] = set()
+    _active: ClassVar[set[_CompareRun]] = set()
 
     def __init__(
         self,
@@ -212,7 +213,7 @@ def _confirm_dropped(entries: list[_Entry], check: LoraArchCheck, parent: QWidge
         + "\n".join(lines)
         + "\n\n"
         + _("Continue?"),
-        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+        QMessageBox.Yes | QMessageBox.Cancel,
     )
     return answer == QMessageBox.StandardButton.Yes
 

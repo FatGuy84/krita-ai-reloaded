@@ -901,7 +901,7 @@ async def get_python_version(python_cmd: Path, *args: str):
 
 def parse_common_errors(output: str, return_code: int | None = None):
     if "error while attempting to bind on address" in output:
-        message_part = output.split("bind on address")[-1].strip()
+        message_part = output.rsplit("bind on address", maxsplit=1)[-1].strip()
         return (
             _("Could not bind on address")
             + f" {message_part}. "
@@ -911,7 +911,7 @@ def parse_common_errors(output: str, return_code: int | None = None):
     nvidia_driver = "Found no NVIDIA driver on your system"
     nvidia_driver_translated = _("Found no NVIDIA driver on your system")
     if nvidia_driver in output:
-        message_part = output.split(nvidia_driver)[-1]
+        message_part = output.rsplit(nvidia_driver, maxsplit=1)[-1]
         return f"{nvidia_driver_translated} {message_part}<br>" + _(
             "If you do not have an NVIDIA GPU, select a different backend below. Server reinstall may be required."
         )

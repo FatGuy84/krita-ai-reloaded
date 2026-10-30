@@ -6,13 +6,14 @@ import time
 import uuid
 import weakref
 from collections import deque
+from collections.abc import Callable
 from copy import copy
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, NamedTuple
+from typing import Any, NamedTuple
 
 from PyQt5.QtCore import QMetaObject, QObject, Qt, QUuid, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QImage, QPainter
@@ -82,7 +83,6 @@ from .custom_workflow import (
 from .jobs import Job, JobKind, JobParams, JobQueue, JobRegion, JobState
 from .properties import ObservableProperties, Property
 from .region import Region, RegionLink, RootRegion, get_region_inpaint_mask, process_regions
-
 
 _inpaint_context_text = {
     InpaintContext.automatic: "Automatic Context",
@@ -226,7 +226,7 @@ class DocumentModel(QObject, ObservableProperties):
                 self.upscale.upscaler = client.models.default_upscaler
 
     def _forward_error(self, error: str):
-        self.report_error(error if error else no_error)
+        self.report_error(error or no_error)
 
     def _forward_validation_error(self, error: str):
         if error:

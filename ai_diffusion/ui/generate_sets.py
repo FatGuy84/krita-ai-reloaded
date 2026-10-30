@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -118,7 +118,7 @@ class GenerateSetBar(QWidget):
                 self,
                 _("Save Set"),
                 _("A set named '{name}' already exists. Replace it?").format(name=name),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.Yes | QMessageBox.Cancel,
             )
             if confirm != QMessageBox.StandardButton.Yes:
                 return
@@ -133,7 +133,7 @@ class GenerateSetBar(QWidget):
             self,
             _("Delete Set"),
             _("Delete the set '{name}'?").format(name=name),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.Yes | QMessageBox.Cancel,
         )
         if confirm != QMessageBox.StandardButton.Yes:
             return

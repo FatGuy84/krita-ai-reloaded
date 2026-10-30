@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from krita import Krita
 from PyQt5.QtCore import QEvent, QMetaObject, QSize, Qt, QTimer, QUrl, pyqtSignal
@@ -49,7 +49,6 @@ from PyQt5.QtWidgets import (
 from ..backend.client import resolve_arch
 from ..backend.workflow import apply_strength, snap_to_percent
 from ..localization import translate as _
-from ..model.connection import ConnectionState
 from ..model.jobs import JobKind, JobState
 from ..model.model import (
     DocumentModel,
@@ -72,17 +71,20 @@ from ..text import (
     pattern_comment,
     pattern_layer,
     pattern_lora,
-    pattern_weight_expr,
     pattern_seq_combined,
+    pattern_weight_expr,
     pattern_wildcard,
     select_on_cursor_pos,
     str_index_to_char16_index,
 )
-from ..wildcards import WildcardLibrary
 from ..util import ensure
+from ..wildcards import WildcardLibrary
 from . import actions, theme
 from .autocomplete import PromptAutoComplete
 from .theme import SignalBlocker
+
+if TYPE_CHECKING:
+    from .style_picker import StylePickerDialog
 
 
 def wildcard_combination_count(model: DocumentModel) -> int:
@@ -438,7 +440,7 @@ class StyleSelectWidget(QWidget):
     def __init__(self, parent: QWidget | None, show_quality=False):
         super().__init__(parent)
         self._value = Styles.list().default
-        self._picker: "StylePickerDialog | None" = None
+        self._picker: StylePickerDialog | None = None
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

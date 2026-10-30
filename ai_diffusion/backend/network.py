@@ -171,7 +171,7 @@ class RequestManager:
         multipart = QHttpMultiPart(QHttpMultiPart.ContentType.FormDataType)
         for key, value in fields.items():
             part = QHttpPart()
-            part.setRawHeader(b"Content-Disposition", f'form-data; name="{key}"'.encode("utf-8"))
+            part.setRawHeader(b"Content-Disposition", f'form-data; name="{key}"'.encode())
             part.setBody(value.encode("utf-8"))
             multipart.append(part)
 
@@ -179,7 +179,7 @@ class RequestManager:
         file_part.setRawHeader(b"Content-Type", file_mime.encode("utf-8"))
         file_part.setRawHeader(
             b"Content-Disposition",
-            f'form-data; name="{file_field}"; filename="{file_name}"'.encode("utf-8"),
+            f'form-data; name="{file_field}"; filename="{file_name}"'.encode(),
         )
         file_part.setBody(file_bytes)
         multipart.append(file_part)
