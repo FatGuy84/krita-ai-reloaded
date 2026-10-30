@@ -220,9 +220,7 @@ def _extract_video_frame(data: bytes) -> bytes | None:
             capture_output=True,
             check=False,
             timeout=20,
-            creationflags=subprocess.CREATE_NO_WINDOW
-            if hasattr(subprocess, "CREATE_NO_WINDOW")
-            else 0,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),  # Windows only
         )
         if out.exists() and out.stat().st_size > 0:
             return out.read_bytes()
