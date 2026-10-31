@@ -84,7 +84,6 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .btn .heart { color: var(--mark); }
 .btn-amber .heart { color: var(--on-amber); }
 .btn-ring { border-color: var(--mark); }
-.hero-links { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .support-strip { border-top: 1px solid var(--hairline); background: var(--surface-200); }
 .support-strip .wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding-block: 28px; }
@@ -100,15 +99,30 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .btn-lg { font-size: 17px; padding: 15px 24px; }
 .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
-/* hero */
-.hero { padding-block: 64px 40px; }
-.hero-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: end; }
-.hero h1 { font-weight: 800; font-size: clamp(40px, 6.2vw, 76px); line-height: 0.98; letter-spacing: -0.035em; }
-.hero h1 .hl { display: inline; background: var(--amber-400); color: var(--on-amber); padding: 0 0.12em; box-decoration-break: clone; -webkit-box-decoration-break: clone; border-radius: 4px; }
-.hero .lede { margin-top: var(--space-6); font-size: 19px; max-width: 34em; color: var(--ink-muted); }
-.hero-cta { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
-.hero-cta .meta { font-size: 14px; color: var(--ink-muted); line-height: 1.5; }
+/* hero: the channel banner's look. Bright render tiles at the edges, dimmed behind the title.
+   It stays dark in the light theme too, like the banner it mirrors. */
+.hero { padding-block: 0 40px; }
+.banner { position: relative; overflow: hidden; isolation: isolate; background: #0e0b07; color: #f6ecdd;
+  --ink: #f6ecdd; --ink-muted: #c4b49c; --surface-200: #241c13; --surface-300: #2e2418; --border: #7e6749; --mark: #ffb020; --focus-ring: #ffb020; }
+.tiles { position: absolute; inset: 0; z-index: -2; display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 190px; gap: 6px; }
+.tiles img { width: 100%; height: 100%; object-fit: cover; opacity: 0.55; display: block; }
+.banner::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, rgba(23,18,12,0.25) 0%, rgba(23,18,12,0.94) 22%, rgba(23,18,12,0.94) 78%, rgba(23,18,12,0.25) 100%); }
+.banner-body { display: flex; align-items: center; justify-content: center; gap: 44px; padding-block: 112px 104px; }
+.banner-mark { width: 148px; height: 148px; flex-shrink: 0; }
+.banner h1 { font-weight: 700; font-size: clamp(44px, 6.4vw, 92px); line-height: 1; letter-spacing: -0.02em; }
+.banner .tagline { margin-top: 16px; font-size: clamp(19px, 2.2vw, 30px); font-weight: 500; line-height: 1.25; }
+.banner .over { margin-top: 12px; font-weight: 600; font-size: clamp(12px, 1.1vw, 15px); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-muted); }
+.hero-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 32px; }
+.hero-cta .meta { flex-basis: 100%; font-size: 14px; color: var(--ink-muted); line-height: 1.5; margin-top: 4px; }
 .hero-cta .meta b { color: var(--ink); font-weight: 600; }
+.hero .lede { margin-top: 40px; font-size: 19px; max-width: 46em; color: var(--ink-muted); }
+@media (max-width: 760px) {
+  .tiles { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 150px; }
+  .banner::before { background: linear-gradient(180deg, rgba(23,18,12,0.35) 0%, rgba(23,18,12,0.92) 30%, rgba(23,18,12,0.92) 100%); }
+  .banner-body { flex-direction: column; align-items: flex-start; gap: 20px; padding-block: 72px 56px; }
+  .banner-mark { width: 88px; height: 88px; }
+}
 
 /* docker mock */
 .stage { margin-top: 48px; display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-000); overflow: hidden; }
@@ -264,7 +278,7 @@ footer a:hover { color: var(--ink); }
 
 @media (max-width: 980px) {
   .nav { display: none; }
-  .hero-grid, .split, .split.flip, .cta { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .split, .split.flip, .cta { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .split.flip .media { order: 0; }
   .stage { grid-template-columns: minmax(0, 1fr); }
   .docker { border-right: 0; border-bottom: 1px solid var(--border); }
@@ -279,7 +293,7 @@ footer a:hover { color: var(--ink); }
   .top .btn-support { padding-inline: 11px; }
   .top .wrap { gap: var(--space-3); }
   .brand span { display: none; }
-  .hero { padding-block: 40px 24px; }
+  .hero { padding-block: 0 24px; }
   section.band { padding-block: 64px; }
   .glance, .browsers, .steps, .req, .faq, .controls { grid-template-columns: minmax(0, 1fr); }
   .glance > div, .req > div { border-left: 0; border-top: 1px solid var(--hairline); }
@@ -316,28 +330,62 @@ footer a:hover { color: var(--ink); }
 
 <main id="top">
   <section class="hero">
-    <div class="wrap">
-      <div class="hero-grid">
+    <div class="banner">
+      <div class="tiles" aria-hidden="true">
+        <img src="media/hero/01.webp" alt="">
+        <img src="media/hero/06.webp" alt="">
+        <img src="media/hero/11.webp" alt="">
+        <img src="media/hero/04.webp" alt="">
+        <img src="media/hero/09.webp" alt="">
+        <img src="media/hero/02.webp" alt="">
+        <img src="media/hero/07.webp" alt="">
+        <img src="media/hero/12.webp" alt="">
+        <img src="media/hero/05.webp" alt="">
+        <img src="media/hero/10.webp" alt="">
+        <img src="media/hero/03.webp" alt="">
+        <img src="media/hero/08.webp" alt="">
+        <img src="media/hero/01.webp" alt="">
+        <img src="media/hero/06.webp" alt="">
+        <img src="media/hero/11.webp" alt="">
+        <img src="media/hero/04.webp" alt="">
+        <img src="media/hero/09.webp" alt="">
+        <img src="media/hero/02.webp" alt="">
+        <img src="media/hero/07.webp" alt="">
+        <img src="media/hero/12.webp" alt="">
+        <img src="media/hero/05.webp" alt="">
+        <img src="media/hero/10.webp" alt="">
+        <img src="media/hero/03.webp" alt="">
+        <img src="media/hero/08.webp" alt="">
+      </div>
+      <div class="wrap banner-body">
+        <svg class="banner-mark" viewBox="0 0 128 128" aria-hidden="true">
+          <defs><linearGradient id="kar-ring" x1="20" y1="14" x2="108" y2="114" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFC24D"/><stop offset="0.45" stop-color="#FFB020"/><stop offset="1" stop-color="#FF6A00"/></linearGradient></defs>
+          <rect width="128" height="128" rx="28" fill="#17120C"/>
+          <path d="M92.28 35.72 A40 40 0 1 1 47.10 27.75" fill="none" stroke="url(#kar-ring)" stroke-width="10" stroke-linecap="round"/>
+          <path d="M59.6 22.4 L49.2 38.5 L40.2 19.3 Z" fill="#FFC24D"/>
+          <g transform="translate(64 65) rotate(26) scale(0.85)"><path d="M-5.5 -24.5 a5.5 5.5 0 0 1 11 0 L5.5 3 L-5.5 3 Z" fill="#F4E7D3"/><rect x="-7" y="4.6" width="14" height="6.8" rx="2" fill="#C9B79B"/><path d="M-7 13 L7 13 L2.2 30 Q0 34 -2.2 30 Z" fill="#FF7A1A"/></g>
+        </svg>
         <div>
-          <p class="overline">The Krita AI Diffusion plugin, fork edition</p>
-          <h1 style="margin-top:14px">Generate faster. Browse visually. <span class="hl">Run it again.</span></h1>
-          <p class="lede">The plugin you already paint with, with the clicks taken out of prompting, LoRA management and batch generation. Same ComfyUI backend, same docker, built on upstream v1.53.0.</p>
-        </div>
-        <div class="hero-cta">
-          <a class="btn btn-amber btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded/releases/latest">
+          <h1>Krita AI Reloaded</h1>
+          <p class="tagline">Generate faster. Browse visually. Run it again.</p>
+          <p class="over">A usability fork of Krita AI Diffusion</p>
+          <div class="hero-cta">
+            <a class="btn btn-amber btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded/releases/latest">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
             Download the plugin
           </a>
-          <p class="meta"><b>v1.53.0-reloaded.4</b>, released 7 October 2026<br>Free and open source, GPL-3.0. Windows, macOS and Linux, wherever Krita runs.</p>
-          <div class="hero-links">
             <a class="btn" href="https://github.com/FatGuy84/krita-ai-reloaded">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 6-6 6 6 6"/><path d="m16 6 6 6-6 6"/></svg>
               Source on GitHub
             </a>
             <a class="btn btn-ring" href="https://ko-fi.com/fatguy84"><svg class="heart" aria-hidden="true"><use href="#heart"/></svg>Support on Ko-fi</a>
+            <p class="meta"><b>v1.53.0-reloaded.4</b>, released 7 October 2026<br>Free and open source, GPL-3.0. Windows, macOS and Linux, wherever Krita runs.</p>
           </div>
         </div>
       </div>
+    </div>
+    <div class="wrap">
+      <p class="lede">The plugin you already paint with, with the clicks taken out of prompting, LoRA management and batch generation. Same ComfyUI backend, same docker, built on upstream v1.53.0.</p>
 
       <div class="stage" role="group" aria-label="Interactive demo of sequential wildcards">
         <div class="docker">
