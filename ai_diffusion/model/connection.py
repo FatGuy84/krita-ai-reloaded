@@ -165,6 +165,8 @@ class Connection(QObject, ObservableProperties):
         client = self.client_if_connected
         if client is None or not client.set_paused(value):
             value = False  # not connected, or unsupported by this client (cloud)
+        elif value:
+            eventloop.run(client.take_back_waiting_job())
         self._paused = value
         self.paused_changed.emit(value)
 

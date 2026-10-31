@@ -424,6 +424,9 @@ class Client(ABC):
         """Hold back queued jobs (the running one finishes). Returns False if unsupported."""
         return False
 
+    async def take_back_waiting_job(self):
+        """While paused: recall a job already sent to the server that has not started yet."""
+
     async def free_memory(self) -> bool:
         """Unload all models from VRAM/RAM on the server. Returns False if unsupported."""
         return False

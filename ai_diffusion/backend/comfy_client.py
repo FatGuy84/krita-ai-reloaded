@@ -561,6 +561,20 @@ class ComfyClient(Client):
             self._resumed.set()
         return True
 
+    async def take_back_waiting_job(self):
+        # The next job is posted as soon as the previous one starts, so without this a pause
+        # would still run one more image after the current one.
+        job = self._waiting_job.peek()
+        if job is None or self._resumed.is_set():
+            return
+        await self._post("queue", {"delete": [job.id]})
+        queue = await self._get("queue")
+        running = {item[1] for item in queue.get("queue_running", [])}
+        if job.id in running or self._waiting_job.peek() is not job:
+            return  # it started before the delete reached the server
+        self._waiting_job.clear()
+        self._queue.put(job, front=True)
+
     async def interrupt(self):
         await self._post("interrupt", {})
 
