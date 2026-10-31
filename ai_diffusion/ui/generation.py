@@ -1476,12 +1476,22 @@ class GenerationWidget(QWidget):
         )
         self.combinations_button.clicked.connect(self._generate_combinations)
 
+        self.skip_button = QToolButton(self)
+        self.skip_button.setIcon(theme.icon("cancel"))
+        self.skip_button.setFixedHeight(self.generate_button.height() - 2)
+        self.skip_button.setToolTip(
+            _("Cancel the current generation - queued jobs continue with the next one")
+        )
+        self.skip_button.setEnabled(False)
+        self.skip_button.clicked.connect(lambda: self.model.cancel(active=True))
+
         actions_layout = QHBoxLayout()
         actions_layout.addLayout(generate_layout)
         actions_layout.addWidget(self.loop_button)
         actions_layout.addWidget(self.pause_button)
         actions_layout.addWidget(self.preview_button)
         actions_layout.addWidget(self.combinations_button)
+        actions_layout.addWidget(self.skip_button)
         actions_layout.addWidget(self.queue_button)
         layout.addLayout(actions_layout)
 
@@ -1601,6 +1611,7 @@ class GenerationWidget(QWidget):
                 self.generate_button.clicked.connect(model.generate),
                 self.generate_button.ctrl_clicked.connect(model.generate_replace),
                 bind_toggle(model, "loop_generate", self.loop_button),
+                model.jobs.count_changed.connect(self._update_skip_button),
             ]
             self.region_prompt.regions = model.active_regions
             self.custom_inpaint.model = model
@@ -1610,6 +1621,7 @@ class GenerationWidget(QWidget):
             self.progress_status.model = model
             self.strength_slider.model = model
             self.history.model_ = model
+            self._update_skip_button()
             self.update_generate_options()
 
     def _open_strength_sweep(self):
@@ -1624,6 +1636,9 @@ class GenerationWidget(QWidget):
 
     def _update_preview_button(self, on: bool):
         self.preview_button.setIcon(self._preview_icon_active if on else self._preview_icon)
+
+    def _update_skip_button(self):
+        self.skip_button.setEnabled(self.model.jobs.any_executing())
 
     def _toggle_pause(self, on: bool):
         root.connection.paused = on

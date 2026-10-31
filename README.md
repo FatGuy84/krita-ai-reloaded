@@ -109,6 +109,9 @@ Other batch changes:
   finishes, queued jobs (batches, Loop Generate) wait until you click again.
   ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the
   current image. Local ComfyUI only.
+* **Cancel current generation**: the ✕ button left of the queue button stops the
+  image that is generating right now; queued jobs (batches, Loop Generate) carry
+  on with the next one. Only enabled while a job is running.
 * **Unload models**: *Unload Models* in the queue popup (click the queue button)
   frees VRAM and RAM on the ComfyUI server, e.g. before switching to another
   GPU-heavy app. A running generation finishes first; the next job loads its
