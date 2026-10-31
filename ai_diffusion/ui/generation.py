@@ -1487,10 +1487,13 @@ class GenerationWidget(QWidget):
 
         actions_layout = QHBoxLayout()
         actions_layout.addLayout(generate_layout)
-        actions_layout.addWidget(self.loop_button)
-        actions_layout.addWidget(self.pause_button)
-        actions_layout.addWidget(self.preview_button)
+        # grouped: what gets generated | canvas view | queue control
         actions_layout.addWidget(self.combinations_button)
+        actions_layout.addWidget(self.loop_button)
+        actions_layout.addSpacing(6)
+        actions_layout.addWidget(self.preview_button)
+        actions_layout.addSpacing(6)
+        actions_layout.addWidget(self.pause_button)
         actions_layout.addWidget(self.skip_button)
         actions_layout.addWidget(self.queue_button)
         layout.addLayout(actions_layout)

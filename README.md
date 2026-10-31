@@ -105,11 +105,11 @@ Other batch changes:
   that makes; with a fixed seed one image per value is queued, so strength is the
   only difference. Turn the fixed seed off to get *Images per step* (1–50) with
   random seeds. Your previous strength and batch count are restored.
-* **Pause queue**: a pause toggle next to Loop Generate. The running generation
+* **Pause queue**: a pause toggle in the queue group, before the ✕ and queue buttons. The running generation
   finishes, queued jobs (batches, Loop Generate) wait until you click again.
   ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the
   current image. Local ComfyUI only.
-* **Cancel current generation**: the ✕ button left of the queue button stops the
+* **Cancel current generation**: the ✕ button between Pause and the queue button stops the
   image that is generating right now; queued jobs (batches, Loop Generate) carry
   on with the next one. Only enabled while a job is running.
 * **Unload models**: *Unload Models* in the queue popup (click the queue button)
@@ -120,7 +120,7 @@ Other batch changes:
   Local ComfyUI only.
 * **Preview while generating**: intermediate sampler results show on the canvas
   in the preview layer, replaced by the real result when the job finishes.
-  Toggle with the eye button next to Pause (or Settings → *Preview While Generating*).
+  Toggle with the eye button between Loop and Pause (or Settings → *Preview While Generating*).
   Update rate is set in Settings → *Preview Update Interval* (0.1–5.0 s, default 0.3 s).
   Picking a result in the history pauses previews so they don't pull the canvas away. Uses ComfyUI's own
   previews (low resolution, quality depends on the server's preview method).
