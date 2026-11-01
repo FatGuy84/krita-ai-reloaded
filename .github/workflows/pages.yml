@@ -5,7 +5,6 @@ on:
     branches: [ux/improvements]
     paths:
       - "site/**"
-      - "media/**"
       - "ai_diffusion/icons/logo-128.png"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -28,20 +27,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The page references its assets next to itself; copy them from where the repo keeps
-      # them instead of checking in duplicates.
+      - name: Read the latest release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view -R "$GITHUB_REPOSITORY" --json tagName,publishedAt > release.json
+          cat release.json
+
+      # site/index.html is written without a document skeleton (claude.ai artifacts add their
+      # own). Everything up to the end of its <style> block belongs in <head>.
       - name: Assemble site
         run: |
-          mkdir -p _site/media
+          mkdir -p _site
           cp -r site/. _site/
-          # site/index.html is written without a document skeleton (claude.ai artifacts add their own)
-          { printf '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<link rel="icon" href="logo-128.png">\n</head>\n<body>\n'
-            cat site/index.html
-            printf '\n</body>\n</html>\n'; } > _site/index.html
           cp ai_diffusion/icons/logo-128.png _site/
-          for f in demo-wildcards demo-loop-generate demo-lora-browser demo-favorites; do
-            cp "media/$f.gif" _site/media/
-          done
+          python3 - <<'EOF'
+          import json, re
+          from datetime import datetime
+
+          page = open("site/index.html", encoding="utf-8").read()
+          cut = page.index("</style>") + len("</style>")
+          head, body = page[:cut], page[cut:]
+
+          # Version strings on the page are marked with data-release; fill them from the release
+          rel = json.load(open("release.json"))
+          tag = rel["tagName"]
+          date = datetime.fromisoformat(rel["publishedAt"].replace("Z", "+00:00"))
+          values = {"tag": tag, "upstream": tag.split("-")[0], "date": f"{date.day} {date:%B %Y}"}
+          body = re.sub(r'(<(\w+) data-release="(\w+)">)[^<]*(</\2>)',
+                        lambda m: m.group(1) + values[m.group(3)] + m.group(4), body)
+
+          open("_site/index.html", "w", encoding="utf-8").write(
+              '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+              '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+              '<link rel="icon" href="logo-128.png">\n' + head + "\n</head>\n<body>\n" + body
+              + "\n</body>\n</html>\n")
+          print(values)
+          EOF
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
