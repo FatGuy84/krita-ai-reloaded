@@ -9,6 +9,7 @@
   <a href="https://github.com/Acly/krita-ai-diffusion"><img alt="Based on upstream v1.53.0" src="https://img.shields.io/badge/upstream-v1.53.0-17120C?style=for-the-badge&labelColor=241C13&color=FFB020"></a>
   <a href="LICENSE"><img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-17120C?style=for-the-badge&labelColor=241C13&color=FF7A1A"></a>
   <a href="https://ko-fi.com/fatguy84"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/support-Ko--fi-17120C?style=for-the-badge&labelColor=241C13&color=FFC24D"></a>
+  <a href="https://www.youtube.com/channel/UC09hs-fzA-kmAZ8r8FnWh2Q"><img alt="Videos on YouTube" src="https://img.shields.io/badge/videos-YouTube-17120C?style=for-the-badge&labelColor=241C13&color=FF6A00"></a>
 </p>
 
 > **Generate faster. Browse visually. Run it again.**
@@ -16,6 +17,8 @@
 A usability-focused fork of the [Krita AI Diffusion plugin](https://github.com/Acly/krita-ai-diffusion)
 with numerous quality-of-life improvements for prompt handling, LoRA management
 and batch generation workflows.
+Feature videos and a full tour are on the
+[YouTube channel](https://www.youtube.com/channel/UC09hs-fzA-kmAZ8r8FnWh2Q).
 
 <p>
   <a href="#sequential-wildcards--batch-control">Wildcards</a> ·
