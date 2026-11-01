@@ -295,7 +295,9 @@ With Lora Manager available you get:
   LoRA tag with one click, either a specific phrase group or all of them
 * **Adjustable thumbnail size** via a slider (up to 384px), and the whole
   list is cached to disk so reopening the browser is instant instead of
-  re-querying the server. A selection you've made survives the list
+  re-querying the server. With **Preload LoRA List** (Settings → Lora Manager,
+  on by default) the list is fetched in the background right after connecting,
+  so even the first open doesn't wait. A selection you've made survives the list
   reloading as more LoRAs stream in or filters change, instead of silently
   dropping and forcing you to re-find what you picked.
 * **Reload list** (re-fetches everything from Lora Manager) and **Scan server**

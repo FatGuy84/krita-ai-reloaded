@@ -907,6 +907,7 @@ class IntegrationSettings(SettingsTab):
                 " checkpoint and recipe browsers as well as model downloads."
             ),
         )
+        self.add("lora_preload", SwitchSetting(S._lora_preload, parent=self))
         self.add("civitai_download_root", TextSetting(S._civitai_download_root, parent=self))
         self.add(
             "civitai_download_subfolder",

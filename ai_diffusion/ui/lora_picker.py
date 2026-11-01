@@ -39,6 +39,7 @@ from ..backend.lora_manager import (
     fetch_new_loras,
     fetch_preview_bytes,
     load_cached_loras,
+    lora_preload_task,
     save_lora_cache,
     set_favorite,
 )
@@ -461,6 +462,11 @@ class LoraBrowser(QWidget):
             return
 
         if not force_refresh:
+            if (preload := lora_preload_task(client.url)) is not None:
+                self._status.setText(_("Loading…"))
+                self._loading = True
+                eventloop.run(self._await_preload(preload))
+                return
             cached = load_cached_loras(client.url)
             if cached:
                 self._all_loras = cached
@@ -474,6 +480,14 @@ class LoraBrowser(QWidget):
         self._all_loras = []
         self._loading = True
         eventloop.run(self._fetch_progressive(client))
+
+    async def _await_preload(self, preload):
+        # the startup preload is already fetching - wait for it instead of fetching twice
+        try:
+            await preload
+        finally:
+            self._loading = False
+        self._load_loras()
 
     def _force_reload(self):
         self._load_loras(force_refresh=True)

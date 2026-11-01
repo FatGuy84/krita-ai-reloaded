@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import time
@@ -9,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
-from .. import util
+from .. import eventloop, util
 from ..util import client_logger as log
 
 if TYPE_CHECKING:
@@ -22,6 +23,10 @@ _CACHE_MAX_AGE = 6 * 3600  # seconds
 # written before a fix (e.g. the favorite flag used to always be False, or the
 # commercial-use flag counting a "Sell"-only license as permission to sell images).
 _CACHE_VERSION = 6
+
+# In-memory copy of the disk cache, so opening the browser doesn't re-parse ~10k entries
+_memory_cache: dict[str, tuple[float, list[LoraInfo]]] = {}
+_preload_tasks: dict[str, asyncio.Task] = {}
 
 
 def _clean_name(file_name: str) -> str:
@@ -132,6 +137,11 @@ def _cache_path(base_url: str) -> Path:
 
 def load_cached_loras(base_url: str) -> list[LoraInfo] | None:
     """Return cached LoRA list if present and not expired, else None."""
+    if base_url in _memory_cache:
+        timestamp, loras = _memory_cache[base_url]
+        if time.time() - timestamp <= _CACHE_MAX_AGE:
+            return list(loras)
+        del _memory_cache[base_url]
     path = _cache_path(base_url)
     try:
         if not path.exists():
@@ -139,20 +149,25 @@ def load_cached_loras(base_url: str) -> list[LoraInfo] | None:
         data = json.loads(path.read_text(encoding="utf-8"))
         if data.get("version") != _CACHE_VERSION:
             return None
-        if time.time() - data.get("timestamp", 0) > _CACHE_MAX_AGE:
+        timestamp = data.get("timestamp", 0)
+        if time.time() - timestamp > _CACHE_MAX_AGE:
             return None
-        return [LoraInfo(**item) for item in data.get("loras", [])]
+        loras = [LoraInfo(**item) for item in data.get("loras", [])]
+        _memory_cache[base_url] = (timestamp, loras)
+        return list(loras)
     except Exception as e:
         log.warning(f"Could not load LoRA cache: {e}")
         return None
 
 
 def save_lora_cache(base_url: str, loras: list[LoraInfo]):
+    timestamp = time.time()
+    _memory_cache[base_url] = (timestamp, list(loras))
     path = _cache_path(base_url)
     try:
         data = {
             "version": _CACHE_VERSION,
-            "timestamp": time.time(),
+            "timestamp": timestamp,
             "loras": [asdict(l) for l in loras],
         }
         path.write_text(json.dumps(data), encoding="utf-8")
@@ -252,6 +267,32 @@ async def fetch_loras_pages(requests: RequestManager, base_url: str):
                 yield result
     except Exception as e:
         log.warning(f"Could not fetch LoRA list: {e}")
+
+
+async def _preload_loras(requests: RequestManager, base_url: str):
+    loras: list[LoraInfo] = []
+    async for batch in fetch_loras_pages(requests, base_url):
+        loras.extend(batch)
+    if loras:
+        save_lora_cache(base_url, loras)
+        log.info(f"Preloaded {len(loras)} LoRAs")
+
+
+def start_lora_preload(requests: RequestManager, base_url: str):
+    """Fill the LoRA cache in the background (after connecting), so the browser opens
+    without waiting for the server - unless the cache is still fresh anyway."""
+    if lora_preload_task(base_url) is not None or load_cached_loras(base_url):
+        return
+    _preload_tasks[base_url] = eventloop.run(_preload_loras(requests, base_url))
+
+
+def lora_preload_task(base_url: str) -> asyncio.Task | None:
+    """The preload still running for this server, if any - await it instead of fetching twice."""
+    task = _preload_tasks.get(base_url)
+    if task is not None and task.done():
+        del _preload_tasks[base_url]
+        return None
+    return task
 
 
 async def fetch_new_loras(
@@ -675,6 +716,7 @@ async def cancel_download(requests: RequestManager, base_url: str, download_id: 
 
 def clear_lora_cache(base_url: str):
     """Drop the cached LoRA list, so the next browser open reflects new downloads."""
+    _memory_cache.pop(base_url, None)
     try:
         _cache_path(base_url).unlink(missing_ok=True)
     except Exception as e:

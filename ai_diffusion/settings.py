@@ -310,6 +310,16 @@ class Settings(QObject):
         ),
     )
 
+    lora_preload: bool
+    _lora_preload = Setting(
+        _("Preload LoRA List"),
+        True,
+        _(
+            "Load the LoRA list from Lora Manager in the background after connecting,"
+            " so the LoRA browser opens without waiting"
+        ),
+    )
+
     civitai_download_root: str
     _civitai_download_root = Setting(
         _("CivitAI Download Folder"),

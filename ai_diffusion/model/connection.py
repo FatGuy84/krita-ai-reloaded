@@ -18,6 +18,7 @@ from ..backend.client import (
 )
 from ..backend.cloud_client import CloudClient
 from ..backend.comfy_client import ComfyClient
+from ..backend.lora_manager import start_lora_preload
 from ..backend.network import NetworkError
 from ..localization import translate as _
 from ..settings import PerformancePreset, ServerMode, Settings, settings
@@ -114,6 +115,8 @@ class Connection(QObject, ObservableProperties):
                 self._task = eventloop._loop.create_task(self._handle_messages())
             self.state = ConnectionState.connected
             self.models_changed.emit()
+            if settings.lora_preload and isinstance(client, ComfyClient):
+                start_lora_preload(client._requests, client.url)
         except NetworkError as e:
             self.error = e.message
             self.error_kind = "network"
