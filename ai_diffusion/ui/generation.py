@@ -840,6 +840,7 @@ class HistoryWidget(QListWidget):
                 _("Copy Prompt (Evaluated) to Clipboard") + "	Ctrl+Shift+C",
                 self._copy_prompt_evaluated_to_clipboard,
             )
+            menu.addAction(_("Copy Seed to Clipboard"), self._copy_seed_to_clipboard)
             menu.addAction(_("Info to Clipboard"), self._info_to_clipboard)
             menu.addSeparator()
             if self._model.dlss5_available:  # only with the optional DLSS5 node pack
@@ -938,6 +939,10 @@ class HistoryWidget(QListWidget):
         if job := self.selected_job:
             self._model.fixed_seed = True
             self._model.seed = job.params.seed
+
+    def _copy_seed_to_clipboard(self):
+        if (job := self.selected_job) and (clipboard := QGuiApplication.clipboard()):
+            clipboard.setText(str(job.params.seed))
 
     def _copy_image_to_clipboard(self):
         """The generated image itself, at full resolution - for pasting into another
