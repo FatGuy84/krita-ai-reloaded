@@ -338,6 +338,13 @@ then C" batches without manually typing out the wildcard syntax.
 The dialog is non-modal, so Krita stays fully usable while it's open — no
 need to close it before painting or switching layers.
 
+**LoRA strengths**: the small arrow on the **LoRA** button opens a list of
+every `<lora:...>` tag in the prompt, each with a slider and a number field
+for its strength (−2 to 3) and a button that removes the tag. Changes go
+straight into the prompt text, and Ctrl+Z undoes them, one slider drag at a
+time. A tag without a strength shows 1. A strength that is itself a wildcard
+(`<lora:name:[[0.6|1.0]]>`) is shown but stays editable only in the prompt.
+
 ### Recipe Browser
 
 Click the **Recipe** button next to the LoRA browser button to open a picker for

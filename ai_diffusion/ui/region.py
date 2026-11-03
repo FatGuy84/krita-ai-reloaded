@@ -48,6 +48,7 @@ from ..util import ensure
 from . import theme
 from .control import ControlListWidget
 from .lora_picker import LoraPickerDialog
+from .lora_strength import LoraStrengthPopup
 from .settings import settings
 from .widget import TextPromptWidget
 
@@ -209,8 +210,12 @@ class ActiveRegionWidget(QFrame):
         self._lora_browse_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self._lora_browse_button.setIcon(theme.icon("lora"))
         self._lora_browse_button.setText(_("LoRA"))
-        self._lora_browse_button.setToolTip(_("Browse LoRAs and search CivitAI"))
+        self._lora_browse_button.setToolTip(
+            _("Browse LoRAs and search CivitAI. The arrow sets the strength of the prompt's LoRAs")
+        )
         self._lora_browse_button.setAutoRaise(True)
+        self._lora_browse_button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self._lora_browse_button.setMenu(LoraStrengthPopup(self.positive, self))
         self._lora_browse_button.clicked.connect(self._open_lora_picker)
         self._lora_dialog: LoraPickerDialog | None = None
 
