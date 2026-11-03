@@ -96,8 +96,10 @@ and the next Generate runs every combination exactly once, then opens the
 results as a labelled grid in a new document at full resolution. The first
 `[[...]]` group in the prompt runs along the columns, every later group down
 the rows. **Same seed** (on by default) gives every cell one seed, so the
-wildcard options are the only thing that changes. For example, to test LoRAs
-against their weights:
+wildcard options are the only thing that changes. Every grid (this one and the
+Generate-across grid) is also saved as `<date time> grid.png` to the folder set in
+**Settings → Interface → Grid Save Folder** (default `Pictures/Krita AI Grids`,
+empty turns it off). For example, to test LoRAs against their weights:
 
 ```
 portrait of a woman, <lora:[[styleA|styleB|styleC]]:[[0.6|0.8|1.0]]>

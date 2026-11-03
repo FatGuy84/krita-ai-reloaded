@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime
+from pathlib import Path
 from typing import ClassVar
 
 from krita import Krita
@@ -9,6 +11,8 @@ from PyQt5.QtGui import QColor, QFont, QPainter
 
 from .image import Extent, Image
 from .model.jobs import Job, JobKind, JobQueue, JobState
+from .settings import settings
+from .util import client_logger as log
 from .util import trim_text
 
 # Krita and Qt get slow and memory hungry beyond this, cells shrink to stay below it
@@ -113,6 +117,24 @@ def build_xy_grid(cells: dict[int, Image], groups: list[list[str]]) -> Image:
     return grid
 
 
+def save_grid(image: Image):
+    """Writes the grid to the grid folder as "<date time> grid.png", so it survives
+    closing the unsaved document."""
+    if not settings.grid_save_folder:
+        return
+    try:
+        folder = Path(settings.grid_save_folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        path, n = folder / f"{stamp} grid.png", 2
+        while path.exists():
+            path, n = folder / f"{stamp} grid {n}.png", n + 1
+        image.save(path)
+        log.info(f"Saved grid to {path}")
+    except Exception as e:
+        log.error(f"Failed to save grid to {settings.grid_save_folder}: {e}")
+
+
 def open_in_new_document(image: Image, name: str):
     """The grid is usually larger than the canvas, a document of its own keeps every
     cell at the resolution it was generated in."""
@@ -171,6 +193,7 @@ class XYGridRun(QObject):
         XYGridRun._active.discard(self)
         if len(self._cells) > 1 and self._first is not None:
             grid = build_xy_grid(self._cells, self._groups)
+            save_grid(grid)
             params = self._first.params
             prompt = trim_text(params.metadata.get("prompt", params.name), 200)
             open_in_new_document(grid, f"[XY Grid] {prompt} ({params.seed})")

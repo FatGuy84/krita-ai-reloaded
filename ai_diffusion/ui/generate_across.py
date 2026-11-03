@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QCheckBox, QDoubleSpinBox, QHBoxLayout, QMessageBox,
 from ..backend.client import ClientModels, resolve_arch
 from ..backend.lora_manager import arch_for_base_model, load_cached_loras
 from ..backend.resources import Arch
-from ..grid import build_grid, open_in_new_document
+from ..grid import build_grid, open_in_new_document, save_grid
 from ..image import Bounds
 from ..localization import translate as _
 from ..model.jobs import Job, JobKind, JobState
@@ -194,6 +194,7 @@ class _CompareRun(QObject):
                 )
         if self._make_grid and len(done) > 1:
             grid = build_grid([(label, job.results[0]) for label, job in done])
+            save_grid(grid)
             prompt = trim_text(done[0][1].params.name, 200)
             open_in_new_document(grid, f"[Grid] {prompt} ({self._seed})")
 

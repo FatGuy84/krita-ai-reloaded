@@ -344,6 +344,13 @@ class Settings(QObject):
         _("Start the name of applied result layers with the model, e.g. [flux1-dev] prompt"),
     )
 
+    grid_save_folder: str
+    _grid_save_folder = Setting(
+        _("Grid Save Folder"),
+        str(Path.home() / "Pictures" / "Krita AI Grids"),
+        _("Comparison and XY grids are also saved here as PNG. Empty turns it off."),
+    )
+
     new_seed_after_apply: bool
     _new_seed_after_apply = Setting(
         _("Live: New Seed after Apply"),
