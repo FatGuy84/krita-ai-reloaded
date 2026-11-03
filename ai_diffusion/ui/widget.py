@@ -170,8 +170,31 @@ class QueuePopup(QMenu):
         batch_layout.addWidget(self._batch_combo_button)
         self._layout.addLayout(batch_layout, 1, 1)
 
+        grid_label = QLabel(_("Grid"), self)
+        grid_label.setVisible(supports_batch)
+        self._xy_grid_check = QCheckBox(_("XY grid"), self)
+        self._xy_grid_check.setToolTip(
+            _(
+                "Run every combination of the sequential wildcards [[a|b]] in the prompt once"
+                " and open the results as a labelled grid in a new document. The first group"
+                " runs along the columns, later groups down the rows."
+            )
+        )
+        self._xy_same_seed_check = QCheckBox(_("Same seed"), self)
+        self._xy_same_seed_check.setToolTip(
+            _("Use one seed for every cell, so only the wildcard options differ")
+        )
+        grid_layout = QHBoxLayout()
+        grid_layout.addWidget(self._xy_grid_check)
+        grid_layout.addWidget(self._xy_same_seed_check)
+        grid_layout.addStretch()
+        for widget in (self._xy_grid_check, self._xy_same_seed_check):
+            widget.setVisible(supports_batch)
+        self._layout.addWidget(grid_label, 2, 0)
+        self._layout.addLayout(grid_layout, 2, 1)
+
         self._seed_label = QLabel(_("Seed"), self)
-        self._layout.addWidget(self._seed_label, 2, 0)
+        self._layout.addWidget(self._seed_label, 3, 0)
         self._seed_input = QDoubleSpinBox(self)
         self._seed_check = QCheckBox(self)
         self._seed_check.setText(_("Fixed"))
@@ -198,7 +221,7 @@ class QueuePopup(QMenu):
         seed_layout.addWidget(self._seed_increment_check)
         seed_layout.addWidget(self._seed_input)
         seed_layout.addWidget(self._randomize_seed)
-        self._layout.addLayout(seed_layout, 2, 1)
+        self._layout.addLayout(seed_layout, 3, 1)
 
         resolution_multiplier_label = QLabel(_("Resolution"), self)
         self._resolution_multiplier_slider = QSlider(Qt.Orientation.Horizontal, self)
@@ -214,19 +237,19 @@ class QueuePopup(QMenu):
         resolution_multiplier_layout = QHBoxLayout()
         resolution_multiplier_layout.addWidget(self._resolution_multiplier_slider)
         resolution_multiplier_layout.addWidget(self._resolution_multiplier_display)
-        self._layout.addWidget(resolution_multiplier_label, 3, 0)
-        self._layout.addLayout(resolution_multiplier_layout, 3, 1)
+        self._layout.addWidget(resolution_multiplier_label, 4, 0)
+        self._layout.addLayout(resolution_multiplier_layout, 4, 1)
 
         enqueue_label = QLabel(_("Enqueue"), self)
         self._queue_mode_combo = QComboBox(self)
         self._queue_mode_combo.addItem(_("at the Back"), QueueMode.back)
         self._queue_mode_combo.addItem(_("in Front (new jobs first)"), QueueMode.front)
         self._queue_mode_combo.addItem(_("Replace Queue"), QueueMode.replace)
-        self._layout.addWidget(enqueue_label, 4, 0)
-        self._layout.addWidget(self._queue_mode_combo, 4, 1)
+        self._layout.addWidget(enqueue_label, 5, 0)
+        self._layout.addWidget(self._queue_mode_combo, 5, 1)
 
         cancel_label = QLabel(_("Cancel"), self)
-        self._layout.addWidget(cancel_label, 5, 0)
+        self._layout.addWidget(cancel_label, 6, 0)
         self._cancel_active = self._create_cancel_button(_("Active"), actions.cancel_active)
         self._cancel_queued = self._create_cancel_button(_("Queued"), actions.cancel_queued)
         self._cancel_all = self._create_cancel_button(_("All"), actions.cancel_all)
@@ -234,7 +257,7 @@ class QueuePopup(QMenu):
         cancel_layout.addWidget(self._cancel_active)
         cancel_layout.addWidget(self._cancel_queued)
         cancel_layout.addWidget(self._cancel_all)
-        self._layout.addLayout(cancel_layout, 5, 1)
+        self._layout.addLayout(cancel_layout, 6, 1)
 
         memory_label = QLabel(_("Memory"), self)
         self._unload_models = QToolButton(self)
@@ -263,8 +286,8 @@ class QueuePopup(QMenu):
         unload_layout = QHBoxLayout()
         unload_layout.addWidget(self._vram_bar, 1)
         unload_layout.addWidget(self._unload_models)
-        self._layout.addWidget(memory_label, 6, 0)
-        self._layout.addLayout(unload_layout, 6, 1)
+        self._layout.addWidget(memory_label, 7, 0)
+        self._layout.addLayout(unload_layout, 7, 1)
 
         self._model = root.active_model
 
@@ -282,6 +305,7 @@ class QueuePopup(QMenu):
         Binding.disconnect_all(self._connections)
         self._model = model
         self._update_seed_input_enabled()
+        self._xy_same_seed_check.setEnabled(model.xy_grid)
         self._seed_input.setValue(model.seed)
         self._batch_spinbox.setValue(model.batch_count)
         self._connections = [
@@ -298,6 +322,13 @@ class QueuePopup(QMenu):
                 lambda v: setattr(self._model, "seed_increment", v)
             ),
             model.fixed_seed_changed.connect(self._update_seed_input_enabled),
+            bind(model, "xy_grid", self._xy_grid_check, "checked", Bind.one_way),
+            self._xy_grid_check.toggled.connect(lambda v: setattr(self._model, "xy_grid", v)),
+            bind(model, "xy_same_seed", self._xy_same_seed_check, "checked", Bind.one_way),
+            self._xy_same_seed_check.toggled.connect(
+                lambda v: setattr(self._model, "xy_same_seed", v)
+            ),
+            model.xy_grid_changed.connect(self._xy_same_seed_check.setEnabled),
             model.seed_increment_changed.connect(self._update_seed_input_enabled),
             self._randomize_seed.clicked.connect(model.generate_seed),
             model.resolution_multiplier_changed.connect(self._update_resolution_multiplier),

@@ -1,20 +1,19 @@
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import ClassVar, NamedTuple
 
-from krita import Krita
-from PyQt5.QtCore import QObject, QRect, Qt
-from PyQt5.QtGui import QColor, QFont, QKeyEvent, QKeySequence, QPainter
+from PyQt5.QtCore import QObject
+from PyQt5.QtGui import QKeyEvent, QKeySequence
 from PyQt5.QtWidgets import QCheckBox, QDoubleSpinBox, QHBoxLayout, QMessageBox, QWidget
 
 from ..backend.client import ClientModels, resolve_arch
 from ..backend.lora_manager import arch_for_base_model, load_cached_loras
 from ..backend.resources import Arch
-from ..image import Bounds, Extent, Image
+from ..grid import build_grid, open_in_new_document
+from ..image import Bounds
 from ..localization import translate as _
 from ..model.jobs import Job, JobKind, JobState
 from ..model.model import DocumentModel, _short_model_name
@@ -197,58 +196,6 @@ class _CompareRun(QObject):
             grid = build_grid([(label, job.results[0]) for label, job in done])
             prompt = trim_text(done[0][1].params.name, 200)
             open_in_new_document(grid, f"[Grid] {prompt} ({self._seed})")
-
-
-# Krita and Qt get slow and memory hungry beyond this, cells shrink to stay below it
-_max_grid_side = 16384
-
-
-def build_grid(entries: list[tuple[str, Image]]) -> Image:
-    """Images in a near-square grid with a name strip above each, at full resolution
-    unless that would exceed the maximum size."""
-    cols = math.ceil(math.sqrt(len(entries)))
-    rows = math.ceil(len(entries) / cols)
-    first = entries[0][1].extent
-    label_ratio = 0.08
-    scale = min(
-        1.0,
-        _max_grid_side / (cols * first.width),
-        _max_grid_side / (rows * first.height * (1 + label_ratio)),
-    )
-    cell_w = max(1, int(first.width * scale))
-    cell_h = max(1, int(first.height * scale))
-    label_h = max(18, int(cell_h * label_ratio))
-    grid = Image.create(Extent(cols * cell_w, rows * (cell_h + label_h)), fill=QColor(24, 24, 24))
-
-    painter = QPainter(grid._qimage)
-    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
-    painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
-    font = QFont()
-    font.setPixelSize(max(10, int(label_h * 0.6)))
-    font.setBold(True)
-    painter.setFont(font)
-    painter.setPen(QColor(235, 235, 235))
-    metrics = painter.fontMetrics()
-    for i, (name, image) in enumerate(entries):
-        x, y = (i % cols) * cell_w, (i // cols) * (cell_h + label_h)
-        text = metrics.elidedText(name, Qt.TextElideMode.ElideMiddle, cell_w - 8)
-        painter.drawText(QRect(x, y, cell_w, label_h), Qt.AlignmentFlag.AlignCenter, text)
-        painter.drawImage(QRect(x, y + label_h, cell_w, cell_h), image._qimage)
-    painter.end()
-    return grid
-
-
-def open_in_new_document(image: Image, name: str):
-    """The grid is usually larger than the canvas, a document of its own keeps every
-    cell at the resolution it was generated in."""
-    w, h = image.extent
-    doc = Krita.instance().createDocument(w, h, name, "RGBA", "U8", "", 300.0)
-    layer = doc.createNode(name, "paintlayer")
-    layer.setPixelData(image.data, 0, 0, w, h)
-    doc.rootNode().addChildNode(layer, None)
-    doc.refreshProjection()
-    if window := Krita.instance().activeWindow():
-        window.addView(doc)
 
 
 def _confirm_dropped(entries: list[_Entry], check: LoraArchCheck, parent: QWidget | None):

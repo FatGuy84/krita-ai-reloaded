@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 import time
 import uuid
@@ -50,6 +51,7 @@ from ..backend.resolution import compute_bounds, compute_relative_bounds
 from ..backend.resources import ControlMode
 from ..document import Document, KritaDocument, SelectionModifiers
 from ..files import FileLibrary
+from ..grid import XYGridRun
 from ..image import BlendMode, Bounds, DummyImage, Extent, Image, ImageCollection, Mask
 from ..layer import Layer, LayerType, RestoreActiveLayer
 from ..localization import translate as _
@@ -69,6 +71,8 @@ from ..text import (
     extract_layers,
     extract_reference_mentions,
     sanitize_reference_name,
+    sequential_groups,
+    strip_prompt_comments,
 )
 from ..util import PluginError, clamp, ensure, trim_text, unique
 from ..util import client_logger as log
@@ -157,6 +161,8 @@ class DocumentModel(QObject, ObservableProperties):
     seed = Property(0, persist=True)
     fixed_seed = Property(False, setter="set_fixed_seed", persist=True)
     seed_increment = Property(False, setter="set_seed_increment", persist=True)
+    xy_grid = Property(False, persist=True)
+    xy_same_seed = Property(True, persist=True)
     resolution_multiplier = Property(1.0, persist=True)
     queue_mode = Property(QueueMode.back, persist=True)
     translation_enabled = Property(True, persist=True)
@@ -176,6 +182,8 @@ class DocumentModel(QObject, ObservableProperties):
     seed_changed = pyqtSignal(int)
     fixed_seed_changed = pyqtSignal(bool)
     seed_increment_changed = pyqtSignal(bool)
+    xy_grid_changed = pyqtSignal(bool)
+    xy_same_seed_changed = pyqtSignal(bool)
     resolution_multiplier_changed = pyqtSignal(float)
     queue_mode_changed = pyqtSignal(QueueMode)
     translation_enabled_changed = pyqtSignal(bool)
@@ -196,6 +204,7 @@ class DocumentModel(QObject, ObservableProperties):
         self._browsing = False  # user picked a result, don't take over the canvas
         # set while comparing models: drops LoRAs that don't fit the checkpoint under test
         self.lora_filter: Callable[[str], bool] | None = None
+        self._across = False  # generate_across() builds its own grid, not an XY one
         self.generate_seed()
         self.jobs = JobQueue()
         self.regions = RootRegion(self)
@@ -250,6 +259,7 @@ class DocumentModel(QObject, ObservableProperties):
         )
         self.fixed_seed = True
         self.seed = seed
+        self._across = True
         try:
             for apply in apply_each:
                 apply()
@@ -257,6 +267,7 @@ class DocumentModel(QObject, ObservableProperties):
                 # mutating it between calls queues one batch per configuration
                 self.generate()
         finally:
+            self._across = False
             restore()
             self.fixed_seed = original_fixed
             self.seed_increment = original_increment
@@ -295,17 +306,25 @@ class DocumentModel(QObject, ObservableProperties):
             self.loop_generate = False
             return
         self.clear_error()
+        count, xy_groups = self.batch_count, None
+        if self.xy_grid and not self._across:
+            # One job per combination, the grid needs each of them exactly once
+            prompt = strip_prompt_comments(job_params.metadata.get("prompt", ""))
+            if groups := sequential_groups(prompt):
+                count = min(math.prod(len(g) for g in groups), 1000)
+                xy_groups = groups
         jobs = self.enqueue_jobs(
             input,
             JobKind.diffusion,
             job_params,
             cond_orig,
-            self.batch_count,
+            count,
             queue_mode,
             prompt_loras_0=prompt_loras_0,
+            xy_groups=xy_groups,
         )
         eventloop.run(_report_errors(self, jobs))
-        self._advance_seed_increment(self.batch_count)
+        self._advance_seed_increment(count)
 
     def _prepare_workflow(self, dryrun=False):
         arch = self.arch
@@ -432,12 +451,16 @@ class DocumentModel(QObject, ObservableProperties):
         count: int = 1,
         queue_mode: QueueMode | None = None,
         prompt_loras_0: list | None = None,
+        xy_groups: list[list[str]] | None = None,
     ):
         sampling = ensure(input.sampling)
         params.has_mask = input.images is not None and input.images.hires_mask is not None
         params.batch_id = uuid.uuid4().hex
         params.workflow_kind = input.kind
         queue_mode = queue_mode or self.queue_mode
+        xy_run = XYGridRun(self.jobs, params.batch_id, xy_groups) if xy_groups else None
+        # an XY grid compares the wildcard options, a shared seed keeps the rest equal
+        seed_step = 0 if xy_run and self.xy_same_seed else settings.batch_size
 
         if queue_mode is QueueMode.replace:
             if to_cancel := self.clear_queued():
@@ -451,35 +474,41 @@ class DocumentModel(QObject, ObservableProperties):
             if l.name not in prompt_lora_names_0
         ]
 
-        for i in range(count):
-            seed = sampling.seed + i * settings.batch_size
-            params.seed = seed
-            if i > 0:
-                input = replace(input, sampling=replace(sampling, seed=seed))
-                if original_cond:  # re-evaluate wildcards in prompts after the seed change
-                    next_prompt = workflow.prepare_prompts(
-                        original_cond,
-                        self.style,
-                        seed,
-                        self.arch,
-                        params.inpaint_mode,
-                        params.ref_layers,
-                        batch_index=i,
-                    )
-                    input.conditioning = next_prompt.conditioning
-                    params.metadata = params.metadata | next_prompt.metadata
-                    params.name = params.metadata.get("prompt_eval", params.name)
-                    if prompt_loras_0 is not None:
-                        job_loras = unique(base_loras + next_prompt.loras, key=lambda l: l.name)
-                        params.metadata["loras"] = [
-                            {"name": l.name, "weight": l.strength} for l in job_loras
-                        ]
-                        job_models = copy(ensure(input.models))
-                        job_models.loras = job_loras
-                        input = replace(input, models=job_models)
-            job = self.jobs.add(kind, copy(params))
-            await self._enqueue_job(job, input, front=queue_mode is QueueMode.front)
-
+        try:
+            for i in range(count):
+                seed = sampling.seed + i * seed_step
+                params.seed = seed
+                if i > 0:
+                    input = replace(input, sampling=replace(sampling, seed=seed))
+                    if original_cond:  # re-evaluate wildcards in prompts after the seed change
+                        next_prompt = workflow.prepare_prompts(
+                            original_cond,
+                            self.style,
+                            seed,
+                            self.arch,
+                            params.inpaint_mode,
+                            params.ref_layers,
+                            batch_index=i,
+                        )
+                        input.conditioning = next_prompt.conditioning
+                        params.metadata = params.metadata | next_prompt.metadata
+                        params.name = params.metadata.get("prompt_eval", params.name)
+                        if prompt_loras_0 is not None:
+                            job_loras = unique(base_loras + next_prompt.loras, key=lambda l: l.name)
+                            params.metadata["loras"] = [
+                                {"name": l.name, "weight": l.strength} for l in job_loras
+                            ]
+                            job_models = copy(ensure(input.models))
+                            job_models.loras = job_loras
+                            input = replace(input, models=job_models)
+                job_params = copy(params)
+                if xy_run:
+                    job_params.metadata = params.metadata | {"batch_index": i}
+                job = self.jobs.add(kind, job_params)
+                await self._enqueue_job(job, input, front=queue_mode is QueueMode.front)
+        finally:  # a failed enqueue still gets a grid of what made it
+            if xy_run:
+                xy_run.enqueued()
         if self.workspace is not Workspace.custom:
             self._track_style_usage(self.style)
 

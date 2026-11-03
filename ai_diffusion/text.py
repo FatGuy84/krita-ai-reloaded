@@ -196,6 +196,20 @@ def replace_reference_names(prompt: str, mapping: dict[str, int], replacement=""
     return pattern_reference_name.sub(replace, prompt)
 
 
+def _seq_group_options(match: re.Match[str], library: WildcardLibrary) -> list[str]:
+    if match.group(1) is not None:
+        return [o.strip() for o in match.group(1).split("|")]
+    options = library.get(match.group(2))
+    return options or [match.group(0)]  # unknown/empty file - leave tag visible
+
+
+def sequential_groups(text: str) -> list[list[str]]:
+    """Options of every [[...]] or __seq:name__ group, in order of appearance. The
+    first group changes fastest from one batch index to the next."""
+    library = WildcardLibrary.instance()
+    return [_seq_group_options(m, library) for m in pattern_seq_combined.finditer(text)]
+
+
 def eval_wildcards(text: str, seed: int, batch_index: int = 0):
     rng = random.Random(seed)
     wildcard_library = WildcardLibrary.instance()
@@ -213,25 +227,18 @@ def eval_wildcards(text: str, seed: int, batch_index: int = 0):
 
     # Cartesian product: each [[...]] or __seq:name__ group gets its own stride
     # dimension, in order of appearance, so a batch cycles through every combination
-    def seq_group_options(match: re.Match[str]) -> list[str]:
-        if match.group(1) is not None:
-            return [o.strip() for o in match.group(1).split("|")]
-        options = wildcard_library.get(match.group(2))
-        return options or [match.group(0)]  # unknown/empty file - leave tag visible
-
-    seq_matches = list(pattern_seq_combined.finditer(text))
-    if seq_matches:
-        option_counts = [max(1, len(seq_group_options(m))) for m in seq_matches]
+    groups = sequential_groups(text)
+    if groups:
         strides: list[int] = []
         stride = 1
-        for count in option_counts:
+        for options in groups:
             strides.append(stride)
-            stride *= count
+            stride *= max(1, len(options))
 
         _group = [0]
 
         def replace_sequential(match: re.Match[str]):
-            options = seq_group_options(match)
+            options = groups[_group[0]]
             idx = (batch_index // strides[_group[0]]) % len(options)
             _group[0] += 1
             return options[idx]

@@ -91,6 +91,22 @@ correctly per batch item — each image in the batch is generated with its own
 LoRA set rather than all of them sharing whatever LoRA the first prompt
 evaluation picked (which is what happens upstream if you try this).
 
+**XY grid**: tick **XY grid** in the queue popup (the arrow next to Generate)
+and the next Generate runs every combination exactly once, then opens the
+results as a labelled grid in a new document at full resolution. The first
+`[[...]]` group in the prompt runs along the columns, every later group down
+the rows. **Same seed** (on by default) gives every cell one seed, so the
+wildcard options are the only thing that changes. For example, to test LoRAs
+against their weights:
+
+```
+portrait of a woman, <lora:[[styleA|styleB|styleC]]:[[0.6|0.8|1.0]]>
+```
+
+gives a 3×3 grid: LoRAs across, weights down. Only the main prompt's groups
+make up the grid, groups in the negative or in region prompts are not axes.
+Cancelled jobs leave their cell empty.
+
 ![Two sequential wildcard groups with per-item LoRA switching and auto batch-count](media/demo-wildcards-lora-batch.gif)
 
 Other batch changes:
