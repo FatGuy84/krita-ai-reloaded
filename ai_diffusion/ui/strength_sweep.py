@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
 from ..localization import translate as _
 from ..model.model import DocumentModel
 from . import theme
+from .generate_across import SeedInput
 
 
 def sweep_values(start: int, end: int, step: int) -> list[int]:
@@ -50,9 +51,8 @@ class StrengthSweepDialog(QDialog):
                 "Off: every image gets a random seed."
             )
         )
-        self._seed = QSpinBox(self)
-        self._seed.setRange(0, 2**31 - 1)
-        self._seed.setValue(int(model.seed) % (2**31))
+        self._seed = SeedInput(minimum=0, parent=self)
+        self._seed.setValue(model.seed)
         self._count = self._spin(1, 50, 1, "")
         self._count.setToolTip(_("Images generated for each strength value (random seeds)"))
 
@@ -135,7 +135,7 @@ class StrengthSweepDialog(QDialog):
                 model.strength = original_strength
                 model.batch_count = original_batch
 
-            model.generate_across([use(v) for v in values], self._seed.value(), restore)
+            model.generate_across([use(v) for v in values], self._seed.seed(), restore)
         else:
             original_fixed = model.fixed_seed
             model.fixed_seed = False

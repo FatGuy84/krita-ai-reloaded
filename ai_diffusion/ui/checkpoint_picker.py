@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSlider,
-    QSpinBox,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -41,7 +40,7 @@ from ..settings import settings
 from ..style import Styles
 from ..util import ensure
 from . import theme
-from .generate_across import AcrossOptions, generate_across_checkpoints
+from .generate_across import AcrossOptions, SeedInput, generate_across_checkpoints
 from .generate_sets import GenerateSetBar
 from .lora_picker import (
     _extract_video_frame,
@@ -222,10 +221,7 @@ class CheckpointBrowser(QWidget):
         self._selected_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         seed_label = QLabel(_("Seed:"), self)
-        self._seed_input = QSpinBox(self)
-        self._seed_input.setRange(-1, 2**31 - 1)
-        self._seed_input.setValue(-1)
-        self._seed_input.setSpecialValueText(_("random"))  # -1 shows "random"
+        self._seed_input = SeedInput(parent=self)
         self._seed_input.setToolTip(_("Seed used for all checkpoints (-1 = random, same for all)"))
         self._seed_input.setFixedWidth(110)
 
@@ -691,7 +687,7 @@ class CheckpointBrowser(QWidget):
             return
         if seed is None:
             # -1 in the seed box means "pick a random one and reuse it for all"
-            seed = self._seed_input.value()
+            seed = self._seed_input.seed()
             if seed < 0:
                 seed = workflow.generate_seed()
         resolved, skipped = self._resolve_checkpoints(infos)

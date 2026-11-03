@@ -8,8 +8,8 @@ from typing import ClassVar, NamedTuple
 
 from krita import Krita
 from PyQt5.QtCore import QObject, QRect, Qt
-from PyQt5.QtGui import QColor, QFont, QPainter
-from PyQt5.QtWidgets import QCheckBox, QHBoxLayout, QMessageBox, QWidget
+from PyQt5.QtGui import QColor, QFont, QKeyEvent, QKeySequence, QPainter
+from PyQt5.QtWidgets import QCheckBox, QDoubleSpinBox, QHBoxLayout, QMessageBox, QWidget
 
 from ..backend.client import ClientModels, resolve_arch
 from ..backend.lora_manager import arch_for_base_model, load_cached_loras
@@ -89,6 +89,37 @@ class AcrossOptions(QWidget):
     def remember(self):
         AcrossOptions._grid = self.grid.isChecked()
         AcrossOptions._layers = self.layers.isChecked()
+
+
+class SeedInput(QDoubleSpinBox):
+    """Seed field for the "Generate across" tools. A double spin box because seeds use
+    the full 32 bit unsigned range, which QSpinBox (int32) can't hold. A pasted seed
+    replaces the whole field, including the "random" placeholder."""
+
+    def __init__(self, minimum: int = -1, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setDecimals(0)
+        self.setRange(minimum, 2**32 - 1)
+        if minimum < 0:
+            self.setSpecialValueText(_("random"))  # -1 shows "random"
+        self.setValue(minimum)
+
+    def seed(self) -> int:
+        return int(self.value())
+
+    def keyPressEvent(self, event: QKeyEvent | None):
+        if event and event.matches(QKeySequence.StandardKey.Paste):
+            self.selectAll()
+        super().keyPressEvent(event)
+
+    def validate(self, input: str | None, pos: int):
+        # pasting via the context menu inserts at the cursor, e.g. "ran123dom"
+        text = input or ""
+        special = self.specialValueText()
+        cleaned = "".join(c for c in text if c not in special and not c.isspace())
+        if cleaned != text and cleaned.lstrip("-").isdigit():
+            return super().validate(cleaned, len(cleaned))
+        return super().validate(input, pos)
 
 
 class _Entry(NamedTuple):

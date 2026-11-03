@@ -18,7 +18,6 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
-    QSpinBox,
     QTabWidget,
     QToolButton,
     QVBoxLayout,
@@ -36,7 +35,7 @@ from ..settings import settings
 from ..style import Style, Styles, sort_recent_styles
 from ..util import ensure
 from . import theme
-from .generate_across import AcrossOptions, generate_across_styles
+from .generate_across import AcrossOptions, SeedInput, generate_across_styles
 from .generate_sets import GenerateSetBar
 from .lora_picker import (
     _extract_video_frame,
@@ -183,10 +182,7 @@ class StyleBrowser(QWidget):
         hint.setStyleSheet(f"color: {theme.grey}; font-style: italic;")
 
         seed_label = QLabel(_("Seed:"), self)
-        self._seed_input = QSpinBox(self)
-        self._seed_input.setRange(-1, 2**31 - 1)
-        self._seed_input.setValue(-1)
-        self._seed_input.setSpecialValueText(_("random"))
+        self._seed_input = SeedInput(parent=self)
         self._seed_input.setToolTip(_("Seed used for all styles (-1 = random, same for all)"))
         self._seed_input.setFixedWidth(110)
 
@@ -583,7 +579,7 @@ class StyleBrowser(QWidget):
         client = root.connection.client_if_connected
         if not styles or model is None or client is None:
             return
-        seed = self._seed_input.value()
+        seed = self._seed_input.seed()
         if seed < 0:
             seed = workflow.generate_seed()
         generate_across_styles(model, client.models, styles, seed, self._across_options, self)
