@@ -501,9 +501,9 @@ picker dialog as the LoRA browser. Click the style name/icon button
   a seed (or leave it random), and hit **Generate across** — runs the
   current prompt once per style with the *same* seed, so the style is the
   only variable and results land grouped by style in the history for an
-  easy comparison. Tick **Grid** to get one extra layer once all are done,
-  with the results side by side and the style name above each, scaled to fit
-  the canvas; tick **Layers** to also put every result on the canvas as
+  easy comparison. Tick **Grid** to get a new document once all are done,
+  with the results side by side and the style name above each, at full
+  resolution (cells only shrink past 16384 px per side); tick **Layers** to also put every result on the canvas as
   `[style name] prompt (seed)`. LoRAs written in the prompt that belong to
   another architecture than a style's checkpoint are left out for that style
   (a dialog lists them before anything is queued).

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import ClassVar, NamedTuple
 
+from krita import Krita
 from PyQt5.QtCore import QObject, QRect, Qt
 from PyQt5.QtGui import QColor, QFont, QPainter
 from PyQt5.QtWidgets import QCheckBox, QHBoxLayout, QMessageBox, QWidget
@@ -74,7 +75,9 @@ class AcrossOptions(QWidget):
         super().__init__(parent)
         self.grid = QCheckBox(_("Grid"), self)
         self.grid.setChecked(AcrossOptions._grid)
-        self.grid.setToolTip(_("When all are done, add one layer with the results side by side"))
+        self.grid.setToolTip(
+            _("When all are done, open a new document with the results side by side")
+        )
         self.layers = QCheckBox(_("Layers"), self)
         self.layers.setChecked(AcrossOptions._layers)
         self.layers.setToolTip(_("Also add each result as a layer (they always go to the history)"))
@@ -160,23 +163,26 @@ class _CompareRun(QObject):
                     f"[{label}] {trim_text(job.params.name, 200)} ({self._seed})", image, bounds
                 )
         if self._make_grid and len(done) > 1:
-            grid = build_grid([(label, job.results[0]) for label, job in done], self._model)
+            grid = build_grid([(label, job.results[0]) for label, job in done])
             prompt = trim_text(done[0][1].params.name, 200)
-            layers.create(f"[Grid] {prompt} ({self._seed})", grid, Bounds(0, 0, *grid.extent))
+            open_in_new_document(grid, f"[Grid] {prompt} ({self._seed})")
 
 
-def build_grid(entries: list[tuple[str, Image]], model: DocumentModel) -> Image:
-    """Images in a near-square grid with a name strip above each, scaled down so the
-    whole grid fits the canvas."""
+# Krita and Qt get slow and memory hungry beyond this, cells shrink to stay below it
+_max_grid_side = 16384
+
+
+def build_grid(entries: list[tuple[str, Image]]) -> Image:
+    """Images in a near-square grid with a name strip above each, at full resolution
+    unless that would exceed the maximum size."""
     cols = math.ceil(math.sqrt(len(entries)))
     rows = math.ceil(len(entries) / cols)
     first = entries[0][1].extent
-    canvas = model.document.extent
     label_ratio = 0.08
     scale = min(
         1.0,
-        canvas.width / (cols * first.width),
-        canvas.height / (rows * first.height * (1 + label_ratio)),
+        _max_grid_side / (cols * first.width),
+        _max_grid_side / (rows * first.height * (1 + label_ratio)),
     )
     cell_w = max(1, int(first.width * scale))
     cell_h = max(1, int(first.height * scale))
@@ -199,6 +205,19 @@ def build_grid(entries: list[tuple[str, Image]], model: DocumentModel) -> Image:
         painter.drawImage(QRect(x, y + label_h, cell_w, cell_h), image._qimage)
     painter.end()
     return grid
+
+
+def open_in_new_document(image: Image, name: str):
+    """The grid is usually larger than the canvas, a document of its own keeps every
+    cell at the resolution it was generated in."""
+    w, h = image.extent
+    doc = Krita.instance().createDocument(w, h, name, "RGBA", "U8", "", 300.0)
+    layer = doc.createNode(name, "paintlayer")
+    layer.setPixelData(image.data, 0, 0, w, h)
+    doc.rootNode().addChildNode(layer, None)
+    doc.refreshProjection()
+    if window := Krita.instance().activeWindow():
+        window.addView(doc)
 
 
 def _confirm_dropped(entries: list[_Entry], check: LoraArchCheck, parent: QWidget | None):
