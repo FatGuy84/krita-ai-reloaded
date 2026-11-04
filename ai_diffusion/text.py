@@ -321,6 +321,21 @@ def eval_wildcards(text: str, seed: int, batch_index: int = 0):
     return text
 
 
+def eval_wildcards_keep_comments(text: str, seed: int, batch_index: int = 0):
+    """eval_wildcards on a prompt with its comments and blank lines left in place. The
+    comments are hidden while evaluating, so every option and random pick is the same as
+    for the prompt with its comments stripped."""
+    comments: list[str] = []
+
+    def hide(match: re.Match[str]):
+        comments.append(match[0])
+        return f"\x02{len(comments) - 1}\x03"
+
+    hidden = "\n".join(pattern_comment.sub(hide, line) for line in text.splitlines())
+    result = eval_wildcards(hidden, seed, batch_index)
+    return re.sub(r"\x02(\d+)\x03", lambda m: comments[int(m[1])], result)
+
+
 def select_current_parenthesis_block(
     text: str, cursor_pos: int, open_brackets: list[str], close_brackets: list[str]
 ) -> tuple[int, int] | None:

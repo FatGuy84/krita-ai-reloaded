@@ -893,15 +893,10 @@ class HistoryWidget(QListWidget):
 
     def _apply_prompt_to_field(self, evaluated=False):
         if job := self.selected_job:
-            positive = "prompt_eval" if evaluated else "prompt"
-            prompt = job.params.metadata.get(positive, job.params.prompt)
             active = self._model.active_regions.active_or_root
-            active.positive = prompt
+            active.positive = _history_prompt(job.params, "prompt", evaluated)
             if isinstance(active, RootRegion):
-                negative = "negative_prompt_eval" if evaluated else "negative_prompt"
-                active.negative = job.params.metadata.get(
-                    negative, job.params.metadata.get("negative_prompt", "")
-                )
+                active.negative = _history_prompt(job.params, "negative_prompt", evaluated)
             if self._model.workspace is Workspace.custom and self._model.document.is_active:
                 self._model.custom.try_set_params(job.params.metadata)
 
@@ -910,8 +905,7 @@ class HistoryWidget(QListWidget):
 
     def _copy_prompt_to_clipboard(self, evaluated=False):
         if job := self.selected_job:
-            positive = "prompt_eval" if evaluated else "prompt"
-            prompt = job.params.metadata.get(positive, job.params.prompt)
+            prompt = _history_prompt(job.params, "prompt", evaluated)
             if clipboard := QGuiApplication.clipboard():
                 clipboard.setText(prompt)
 
@@ -1923,3 +1917,14 @@ _region_mask_button_icons = {
     True: theme.icon("region-alpha-active"),
     False: theme.icon("region-alpha"),
 }
+
+
+def _history_prompt(params: JobParams, key: str, evaluated: bool):
+    """The prompt as typed, or with wildcards evaluated - keeping its comments and blank
+    lines where the job recorded that ("_eval_structured", older jobs don't have it)."""
+    meta = params.metadata
+    if evaluated:
+        found = meta.get(f"{key}_eval_structured") or meta.get(f"{key}_eval")
+        if found is not None:
+            return found
+    return meta.get(key, params.prompt if key == "prompt" else "")

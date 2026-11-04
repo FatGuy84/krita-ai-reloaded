@@ -13,6 +13,7 @@ from ..settings import PerformanceSettings, settings
 from ..style import SamplerPresets, Style, StyleSettings
 from ..text import (
     eval_wildcards,
+    eval_wildcards_keep_comments,
     extract_loras,
     merge_prompt,
     reference_name_mapping,
@@ -1845,6 +1846,7 @@ def prepare_prompts(
     cond.positive = eval_wildcards(cond.positive, seed, batch_index)
     if cond.positive != meta["prompt"]:
         meta["prompt_eval"] = cond.positive
+        _add_structured_eval(meta, "prompt", seed, batch_index)
     cond.positive, extra_loras = extract_loras(cond.positive, files.loras)
     cond.positive = replace_layers(cond.positive, ref_layers, layer_replace)
     cond.positive += _collect_lora_triggers(models.loras, files)
@@ -1866,6 +1868,7 @@ def prepare_prompts(
         cond.negative = eval_wildcards(cond.negative, seed, batch_index)
         if cond.negative != meta["negative_prompt"]:
             meta["negative_prompt_eval"] = cond.negative
+            _add_structured_eval(meta, "negative_prompt", seed, batch_index)
         cond.negative = merge_prompt(cond.negative, style.negative_prompt, cond.language)
     meta["negative_prompt_final"] = cond.negative
 
@@ -2174,6 +2177,14 @@ def _get_sampling_lora(style: Style, is_live: bool, model_set: ModelDict, models
                 )
         return [LoraInput(file or preset.lora, 1.0)]
     return []
+
+
+def _add_structured_eval(meta: dict[str, Any], key: str, seed: int, batch_index: int):
+    # "<key>_eval" is what the model got, without comments - it also names the job and its
+    # layers. Copying it from the history should keep the sections of a structured prompt.
+    structured = eval_wildcards_keep_comments(meta[key], seed, batch_index)
+    if structured.strip() != meta[f"{key}_eval"]:
+        meta[f"{key}_eval_structured"] = structured.strip()
 
 
 def _collect_lora_triggers(loras: list[LoraInput], files: FileLibrary):
