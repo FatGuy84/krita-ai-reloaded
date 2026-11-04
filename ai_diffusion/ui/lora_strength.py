@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
 
 from ..backend.lora_manager import load_cached_loras
 from ..localization import translate as _
-from ..root import root
+from ..model.root import root
 from ..settings import settings
 from ..text import (
     add_trigger_group,
