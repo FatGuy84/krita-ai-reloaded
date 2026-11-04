@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from . import util
 from .backend.network import RequestManager
 from .localization import translate as _
-from .text import create_img_metadata
+from .text import create_img_metadata, create_prompt_source, prompt_source_key
 from .util import client_logger as log
 
 if TYPE_CHECKING:
@@ -59,7 +59,11 @@ async def send_image_to_eagle(image, job: Job, index: int) -> str | None:
     path = util.find_unused_path(_upload_dir / file_name)
 
     metadata_text = create_img_metadata(job.params)
-    image.save_png_with_metadata(filepath=path, metadata_text=metadata_text)
+    image.save_png_with_metadata(
+        filepath=path,
+        metadata_text=metadata_text,
+        extra_text={prompt_source_key: create_prompt_source(job.params)},
+    )
 
     rating = job.rating(index)
     tags = ["krita-ai"]

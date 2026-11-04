@@ -23,6 +23,7 @@ from .model.properties import deserialize, serialize
 from .model.region import Region, RootRegion
 from .settings import settings
 from .style import Style, Styles
+from .text import prompt_source_key
 from .util import client_logger as log
 from .util import encode_json
 
@@ -412,8 +413,13 @@ def import_prompt_from_file(model: DocumentModel):
     if model.regions.positive == "" and model.regions.negative == "" and filename.endswith(exts):
         try:
             image_text = _read_image_text(filename)
+            # Written by this plugin: the prompts as typed, with comments and blank lines
+            if text := image_text.get(prompt_source_key):
+                prompts = json.loads(text)
+                model.regions.positive = str(prompts.get("prompt", ""))
+                model.regions.negative = str(prompts.get("negative_prompt", ""))
             # A1111
-            if text := image_text.get("parameters"):
+            elif text := image_text.get("parameters"):
                 if "Negative prompt:" in text:
                     positive, negative = text.split("Negative prompt:", 1)
                     model.regions.positive = positive.strip()

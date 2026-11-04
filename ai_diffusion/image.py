@@ -711,10 +711,16 @@ class Image:
             file.close()
 
     def save_png_with_metadata(
-        self, filepath: str | Path, metadata_text: str, format: ImageFileFormat | None = None
+        self,
+        filepath: str | Path,
+        metadata_text: str,
+        format: ImageFileFormat | None = None,
+        extra_text: dict[str, str] | None = None,
     ):
         png_bytes = bytes(self.to_bytes(format or ImageFileFormat.png))
         self.save_png_w_itxt(filepath, png_bytes, "parameters", metadata_text)
+        for keyword, text in (extra_text or {}).items():
+            self.save_png_w_itxt(filepath, Path(filepath).read_bytes(), keyword, text)
 
     def write_xmp_metadata(self, filepath: str | Path, xmp: str):
         path = Path(filepath)

@@ -68,8 +68,10 @@ from ..style import Arch, Style, Styles
 from ..text import (
     create_ai_generated_xmp,
     create_img_metadata,
+    create_prompt_source,
     extract_layers,
     extract_reference_mentions,
+    prompt_source_key,
     sanitize_reference_name,
     sequential_groups,
     strip_prompt_comments,
@@ -2151,7 +2153,10 @@ def _save_job_result(model: DocumentModel, job: Job | None, index: int):
     if settings.save_image_metadata and ext == ".png":
         metadata_text = create_img_metadata(job.params)
         base_image.save_png_with_metadata(
-            filepath=path, metadata_text=metadata_text, format=settings.save_image_format
+            filepath=path,
+            metadata_text=metadata_text,
+            format=settings.save_image_format,
+            extra_text={prompt_source_key: create_prompt_source(job.params)},
         )
     else:
         quality = None
