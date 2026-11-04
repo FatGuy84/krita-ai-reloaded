@@ -909,6 +909,7 @@ class IntegrationSettings(SettingsTab):
             ),
         )
         self.add("lora_preload", SwitchSetting(S._lora_preload, parent=self))
+        self.add("lora_trigger_blocks", SwitchSetting(S._lora_trigger_blocks, parent=self))
         self.add("civitai_download_root", TextSetting(S._civitai_download_root, parent=self))
         self.add(
             "civitai_download_subfolder",

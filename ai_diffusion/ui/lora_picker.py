@@ -46,7 +46,7 @@ from ..backend.lora_manager import (
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
-from ..text import format_option_group
+from ..text import format_option_group, lora_end
 from ..util import ensure
 from ..wildcards import WildcardLibrary
 from . import theme
@@ -887,7 +887,7 @@ class LoraBrowser(QWidget):
                 parts.append("\n----\n".join(lora.trigger_words))
             else:
                 parts.append(selected)
-        return " ".join(parts)
+        return _with_block(" ".join(parts), len(parts) > 1)
 
     def _add_to_prompt(self):
         items = self._grid.selectedItems()
@@ -951,7 +951,7 @@ class LoraBrowser(QWidget):
                 trigger_text = lora.trigger_words[0]
             elif trigger_mode == _MULTI_TRIGGERS_ALL and lora.trigger_words:
                 trigger_text = ", ".join(lora.trigger_words)
-            entries.append(f"{tag} {trigger_text}".strip())
+            entries.append(_with_block(f"{tag} {trigger_text}".strip(), bool(trigger_text)))
         return entries
 
     def _build_multi_lora_block(self, items: list[QListWidgetItem]) -> str:
@@ -960,6 +960,11 @@ class LoraBrowser(QWidget):
         if fmt == _FORMAT_SEPARATE:  # all LoRAs together, no wildcard
             return "\n".join(entries)
         return format_option_group(entries, fmt == _FORMAT_SEQUENTIAL)
+
+
+def _with_block(text: str, has_triggers: bool):
+    """Closes the trigger block after the triggers (see text.lora_block_end)."""
+    return text + lora_end if has_triggers and settings.lora_trigger_blocks else text
 
 
 class LoraPickerDialog(QDialog):

@@ -320,6 +320,16 @@ class Settings(QObject):
         ),
     )
 
+    lora_trigger_blocks: bool
+    _lora_trigger_blocks = Setting(
+        _("Keep Trigger Words with their LoRA"),
+        True,
+        _(
+            "Insert LoRAs as <lora:name> trigger words</lora>, so prompt enhancement keeps"
+            " the triggers untouched and the LoRA popup can add and remove them"
+        ),
+    )
+
     civitai_download_root: str
     _civitai_download_root = Setting(
         _("CivitAI Download Folder"),

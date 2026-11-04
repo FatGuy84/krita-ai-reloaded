@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QApplication, QCompleter, QPlainTextEdit, QStyle, QS
 from ..files import FileFilter
 from ..model.root import root
 from ..settings import settings
-from ..text import char16_index_to_str_index, sanitize_reference_name
+from ..text import char16_index_to_str_index, lora_end, sanitize_reference_name
 from ..util import ensure, plugin_dir, user_data_dir
 
 
@@ -278,6 +278,8 @@ class PromptAutoComplete:
         if prefix.startswith("<lora:"):
             if file := root.files.loras.find(f"{completion}.safetensors"):
                 triggers = " " + file.meta("lora_triggers", "")
+                if settings.lora_trigger_blocks and triggers.strip():
+                    triggers += lora_end
         elif prefix.startswith(("<layer:", "@")):
             pass
         else:  # tag completion

@@ -71,6 +71,7 @@ from ..text import (
     pattern_comment,
     pattern_layer,
     pattern_lora,
+    pattern_lora_end,
     pattern_seq_combined,
     pattern_weight_expr,
     pattern_wildcard,
@@ -586,6 +587,12 @@ class PromptHighlighter(QSyntaxHighlighter):
                 if m.group(2):
                     self.setFormat(m.start(2), m.end(2) - m.start(2), self._weight_fmt)
                     self.setFormat(m.end(2), 1, self._grey_fmt)
+
+        for m in pattern_lora_end.finditer(text):
+            if m.start() < comment_start:
+                self.setFormat(m.start(), 2, self._grey_fmt)
+                self.setFormat(m.start() + 2, 4, self._keyword_fmt)
+                self.setFormat(m.end() - 1, 1, self._grey_fmt)
 
         for m in pattern_layer.finditer(text):
             if m.start() < comment_start:

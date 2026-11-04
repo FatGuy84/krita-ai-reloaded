@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 import re
 from pathlib import Path
@@ -48,6 +49,10 @@ class LoraId(NamedTuple):
 
 pattern_comment = re.compile(r"(?<!\\)#(?![0-9a-fA-F]{6}).*")
 pattern_lora = re.compile(r"<lora:([^:<>]+)(?::(-?[^:<>]*))?>", re.IGNORECASE)
+# Closes the block a LoRA tag opens for its trigger words: <lora:name:0.8> trigger</lora>.
+# Only marks which words belong to the LoRA, it is removed before the prompt is used.
+pattern_lora_end = re.compile(r"</lora>", re.IGNORECASE)
+lora_end = "</lora>"
 pattern_layer = re.compile(r"<layer:([^>]+)>", re.IGNORECASE)
 # @Name mention of a named reference image. Not preceded by a word char, so e-mail
 # addresses and the like stay untouched.
@@ -122,7 +127,68 @@ def extract_loras(prompt: str, lora_files: FileCollection):
         return ""
 
     prompt = pattern_lora.sub(replace, prompt)
+    prompt = pattern_lora_end.sub("", prompt)
     return prompt.strip(), loras
+
+
+def lora_block_end(text: str, tag: re.Match[str]) -> int | None:
+    """Position of the </lora> that closes the trigger block of `tag`, None if the tag
+    has no block (another LoRA tag comes first, or there is no </lora> at all)."""
+    close = pattern_lora_end.search(text, tag.end())
+    if close is None:
+        return None
+    following = pattern_lora.search(text, tag.end())
+    if following and following.start() < close.start():
+        return None
+    return close.start()
+
+
+def normalize_trigger(term: str):
+    return " ".join(term.replace("_", " ").replace("\\", "").lower().split())
+
+
+def trigger_terms(text: str) -> list[str]:
+    """The comma separated parts of a trigger group, or of a prompt. Tags and wildcard
+    brackets separate parts too, as in _term_pattern."""
+    parts = re.split(r"[,\n|\[\]{}<>]", text)
+    return [t for t in (normalize_trigger(p) for p in parts) if t]
+
+
+def has_trigger_group(text: str, group: str):
+    terms = set(trigger_terms(text))
+    return bool(group_terms := trigger_terms(group)) and all(t in terms for t in group_terms)
+
+
+def _term_pattern(term: str):
+    def word(w: str):  # parentheses may be escaped in the prompt: chara \(series\)
+        return "".join(r"\\?" + re.escape(c) if c in "()" else re.escape(c) for c in w)
+
+    words = [word(w) for w in re.split(r"[\s_]+", term.replace("\\", "").strip()) if w]
+    # a whole prompt part: delimited by commas, line ends, wildcard brackets or a LoRA tag
+    before = r"(?:^|(?<=[,\n|\[{>]))[^\S\n]*"
+    after = r"[^\S\n]*(?=[,\n|\]}<]|$)"
+    term_re = "(?P<term>" + r"[\s_]+".join(words) + ")"
+    return re.compile(before + term_re + after, re.IGNORECASE | re.MULTILINE)
+
+
+def remove_trigger_group(text: str, group: str):
+    """Removes every part of `group` once from `text`, with the comma that separated it."""
+    for term in group.split(","):
+        if not term.strip() or not (m := _term_pattern(term).search(text)):
+            continue
+        start, end = m.span("term")
+        if tail := re.match(r"[^\S\n]*,[^\S\n]*", text[end:]):
+            end += tail.end()
+        elif head := re.search(r",[^\S\n]*$", text[:start]):
+            start = head.start()
+        text = text[:start] + text[end:]
+    return text
+
+
+def add_trigger_group(content: str, group: str):
+    """Appends `group` to the content of a trigger block."""
+    content = content.rstrip(" ,")
+    return f"{content}, {group}" if content.strip() else f" {group}"
 
 
 def _extract_layers(prompt: str, start_index=1):
@@ -452,6 +518,18 @@ def create_ai_generated_xmp(workflow_kind: WorkflowKind):
  </rdf:RDF>
 </x:xmpmeta>
 <?xpacket end="w"?>"""
+
+
+# PNG text chunk with the prompts as they were typed. The A1111 "parameters" chunk holds
+# what the model got: comments, blank lines and wildcards are gone, the style is merged
+# in. Reading an image back prefers this one, so a structured prompt survives.
+prompt_source_key = "krita-ai-diffusion"
+
+
+def create_prompt_source(params: JobParams):
+    meta = params.metadata
+    prompts = {"prompt": meta.get("prompt", ""), "negative_prompt": meta.get("negative_prompt", "")}
+    return json.dumps(prompts, ensure_ascii=False)
 
 
 # creates the img text metadata for embedding in PNG files in style like Automatic1111

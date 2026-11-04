@@ -347,6 +347,24 @@ straight into the prompt text, and Ctrl+Z undoes them, one slider drag at a
 time. A tag without a strength shows 1. A strength that is itself a wildcard
 (`<lora:name:[[0.6|1.0]]>`) is shown but stays editable only in the prompt.
 
+**Trigger blocks**: the LoRA browser and autocomplete insert a LoRA together
+with its trigger words as one block, closed by `</lora>`:
+
+```
+masterpiece, <lora:CharA:0.80> chara, red hair</lora>, 1girl, smiling
+```
+
+`</lora>` is only a marker, it is removed before the prompt is used. It keeps
+the triggers with their LoRA: **Enhance Prompt** never sees or rewrites a
+block (it goes under `# Loras` as a whole), and in the LoRA strengths popup
+the ✕ removes the tag *with* its triggers. Below each block the popup shows the
+LoRA's trigger groups (from Lora Manager, else the style editor's trigger
+words) as toggle buttons, so a group can be added to or taken out of the block
+with one click. A tag without a block gets a link button that moves its
+trigger words found in the prompt into a new block. Turn it off with
+**Keep Trigger Words with their LoRA** (Settings → Lora Manager); `</lora>`
+already in a prompt is still removed then.
+
 ### Recipe Browser
 
 Click the **Recipe** button next to the LoRA browser button to open a picker for
@@ -700,6 +718,11 @@ much faster.
   Content / Remove Content / Replace Background / …), Upscale, etc. — not
   just the prompt and sampler settings. For Generate (Custom), the
   Seamless/Focus/Edit/Fill/Context settings used are recorded too.
+* **Original prompt in saved PNGs**: next to the A1111 `parameters` (the
+  prompt as the model got it: comments, blank lines and wildcards gone, style
+  merged in), saved PNGs and Save to Eagle images carry the prompts as typed
+  in a `krita-ai-diffusion` text chunk. Opening such an image brings back the
+  prompt with its comments and blank lines, e.g. the sections of a split prompt.
 
 ### AI selection
 
