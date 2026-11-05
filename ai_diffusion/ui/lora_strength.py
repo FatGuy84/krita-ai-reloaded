@@ -253,12 +253,30 @@ class LoraStrengthPopup(QMenu):
         chip_layout.setContentsMargins(12, 0, 0, 4)
         chip_layout.setHorizontalSpacing(4)
         chip_layout.setVerticalSpacing(2)
+        # the default checked look is barely visible in most themes: active chips get the
+        # highlight border and a check mark, inactive ones go grey and dashed
+        chips.setStyleSheet(
+            "QToolButton { padding: 1px 6px; border-radius: 3px;"
+            f" color: {theme.grey}; border: 1px dashed {theme.grey}; background: transparent; }}"
+            f" QToolButton:checked {{ color: palette(text); border: 1px solid {theme.active};"
+            f" background: {theme.line}; }}"
+            f" QToolButton:hover {{ border-color: {theme.highlight}; }}"
+        )
         for i, group in enumerate(groups):
+            active = has_trigger_group(content, group)
             chip = QToolButton(chips)
-            chip.setText(trim_text(group, 32))
-            chip.setToolTip(group)
+            chip.setText(("✓ " if active else "") + trim_text(group, 32))
+            chip.setToolTip(
+                group
+                + "\n"
+                + (
+                    _("In the prompt, click to remove")
+                    if active
+                    else _("Click to add to the prompt")
+                )
+            )
             chip.setCheckable(True)
-            chip.setChecked(has_trigger_group(content, group))
+            chip.setChecked(active)
             chip.clicked.connect(lambda _checked, g=group: self._edit(toggle_group, index, g))
             chip_layout.addWidget(chip, i // _chips_per_row, i % _chips_per_row)
         row_layout = QHBoxLayout()
