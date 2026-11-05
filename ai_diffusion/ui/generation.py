@@ -52,6 +52,7 @@ from PyQt5.QtWidgets import (
 from ..backend.api import InpaintContext, SegmentMode
 from ..backend.resources import Arch
 from ..backend.workflow import FillMode, InpaintMode
+from ..grid import batch_grid, open_in_new_document, save_grid
 from ..image import Bounds, Extent, Image
 from ..localization import translate as _
 from ..model.jobs import Job, JobKind, JobParams, JobQueue, JobState
@@ -675,6 +676,20 @@ class HistoryWidget(QListWidget):
                     it.setSelected(True)
         self.select_item()
 
+    def _grid_from_batch(self, header_item: QListWidgetItem):
+        jobs = [
+            self._model.jobs.find(id) for id in header_item.data(Qt.ItemDataRole.UserRole + 2) or []
+        ]
+        result = batch_grid([j for j in jobs if j is not None])
+        if result is None:
+            QMessageBox.information(
+                self, _("Create Grid"), _("A grid needs at least two images in the batch.")
+            )
+            return
+        grid, name = result
+        save_grid(grid)
+        open_in_new_document(grid, name)
+
     def _toggle_batch_collapse(self, header_item: QListWidgetItem):
         key = header_item.data(Qt.ItemDataRole.UserRole)
         if key in self._collapsed_batches:
@@ -796,6 +811,13 @@ class HistoryWidget(QListWidget):
         label = _("Expand Batch") if key in self._collapsed_batches else _("Collapse Batch")
         menu.addAction(label, lambda: self._toggle_batch_collapse(header_item))
         menu.addAction(_("Select Batch"), lambda: self._select_batch(header_item))
+        grid_action = ensure(
+            menu.addAction(_("Create Grid"), lambda: self._grid_from_batch(header_item))
+        )
+        grid_action.setToolTip(
+            _("Open the batch as a labelled grid in a new document, also saved to the grid folder")
+        )
+        menu.setToolTipsVisible(True)
         menu.addSeparator()
         menu.addAction(_("Discard Batch") + "\tDel", lambda: self._discard_batch(header_item))
         menu.exec(self.mapToGlobal(pos))

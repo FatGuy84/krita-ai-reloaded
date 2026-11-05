@@ -109,6 +109,13 @@ gives a 3×3 grid: LoRAs across, weights down. Only the main prompt's groups
 make up the grid, groups in the negative or in region prompts are not axes.
 Cancelled jobs leave their cell empty.
 
+**Grid from history**: right-click a batch header in the history and pick
+**Create Grid** to lay out a finished batch afterwards. A batch generated with XY
+grid gets its rows and columns back. Any other batch gets a near-square grid where
+each cell is labelled with what sets it apart: the prompt parts not every image
+shares (the evaluated wildcards), plus the seed when seeds differ. The grid is
+saved to the grid folder like the others.
+
 ![Two sequential wildcard groups with per-item LoRA switching and auto batch-count](media/demo-wildcards-lora-batch.gif)
 
 Other batch changes:

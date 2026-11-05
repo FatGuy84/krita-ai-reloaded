@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import math
+import re
 from datetime import datetime
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from krita import Krita
 from PyQt5.QtCore import QObject, QRect, Qt
@@ -12,6 +13,7 @@ from PyQt5.QtGui import QColor, QFont, QPainter
 from .image import Extent, Image
 from .model.jobs import Job, JobKind, JobQueue, JobState
 from .settings import settings
+from .text import sequential_groups, strip_prompt_comments
 from .util import client_logger as log
 from .util import trim_text
 
@@ -115,6 +117,70 @@ def build_xy_grid(cells: dict[int, Image], groups: list[list[str]]) -> Image:
             painter.drawImage(rect, image._qimage)
     painter.end()
     return grid
+
+
+_part_split = re.compile(r"[,\n]")
+
+
+def _prompt_parts(prompt: str):
+    parts = (" ".join(p.split()) for p in _part_split.split(strip_prompt_comments(prompt)))
+    return [p for p in parts if p]
+
+
+def variant_labels(prompts: list[str], seeds: list[int]) -> list[str]:
+    """What sets each image apart from the rest of its batch: the prompt parts not all
+    of them share, and the seed if seeds differ (or nothing else does)."""
+    parts = [_prompt_parts(p) for p in prompts]
+    common = set.intersection(*(set(p) for p in parts)) if parts else set()
+    show_seed = len(set(seeds)) > 1
+    labels = []
+    for prompt_parts, seed in zip(parts, seeds):
+        text = ", ".join(p for p in prompt_parts if p not in common)
+        if show_seed or not text:
+            text = f"{text} · {seed}" if text else f"seed {seed}"
+        labels.append(trim_text(text, 160))
+    return labels
+
+
+def _job_prompt(job: Job):
+    return job.params.metadata.get("prompt_eval") or job.params.name
+
+
+def _xy_cells(jobs: list[Job]):
+    """Cells and groups of a sequential wildcard batch run with XY grid on, else None."""
+    indices = [job.params.metadata.get("batch_index") for job in jobs]
+    if any(i is None for i in indices):
+        return None
+    groups = sequential_groups(strip_prompt_comments(jobs[0].params.metadata.get("prompt", "")))
+    if not groups or max(cast(int, i) for i in indices) >= math.prod(len(g) for g in groups):
+        return None
+    return {cast(int, i): job.results[0] for i, job in zip(indices, jobs)}, groups
+
+
+def batch_grid(jobs: list[Job]) -> tuple[Image, str] | None:
+    """A grid of a history batch and a name for its document. Batches from an XY grid
+    run get their wildcard layout back, others a grid labelled by what differs."""
+    jobs = [j for j in jobs if j.kind is JobKind.diffusion and len(j.results) > 0]
+    jobs.sort(key=lambda j: j.params.metadata.get("batch_index", 0))
+    if not jobs:
+        return None
+    first = jobs[0].params
+    name = trim_text(first.metadata.get("prompt", first.name), 200)
+    if (xy := _xy_cells(jobs)) and len(xy[0]) > 1:
+        return build_xy_grid(*xy), f"[XY Grid] {name} ({first.seed})"
+
+    images: list[tuple[Job, int]] = []
+    for job in jobs:
+        count = 1 if job.params.is_layered else len(job.results)
+        images += [(job, i) for i in range(count)]
+    if len(images) < 2:
+        return None
+    labels = variant_labels([_job_prompt(j) for j, _ in images], [j.params.seed for j, _ in images])
+    entries = []
+    for label, (job, i) in zip(labels, images):
+        suffix = f" #{i + 1}" if len(job.results) > 1 and not job.params.is_layered else ""
+        entries.append((label + suffix, job.results[i]))
+    return build_grid(entries), f"[Grid] {name}"
 
 
 def save_grid(image: Image):
