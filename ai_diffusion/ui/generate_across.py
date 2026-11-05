@@ -106,10 +106,10 @@ class SeedInput(QDoubleSpinBox):
     def seed(self) -> int:
         return int(self.value())
 
-    def keyPressEvent(self, event: QKeyEvent | None):
-        if event and event.matches(QKeySequence.StandardKey.Paste):
+    def keyPressEvent(self, e: QKeyEvent | None):
+        if e and e.matches(QKeySequence.StandardKey.Paste):
             self.selectAll()
-        super().keyPressEvent(event)
+        super().keyPressEvent(e)
 
     def validate(self, input: str | None, pos: int):
         # pasting via the context menu inserts at the cursor, e.g. "ran123dom"

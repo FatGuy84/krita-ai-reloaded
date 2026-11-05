@@ -103,9 +103,12 @@ def wrap_lora(text: str, index: int, groups: list[str]):
     parts, pos, own = [], 0, ""
     for i, tag in enumerate(pattern_lora.finditer(text)):
         close = lora_block_end(text, tag)
-        if i != index and close is None:
+        if i == index:
+            end = tag.end()
+        elif close is not None:
+            end = close + len(lora_end)
+        else:
             continue
-        end = tag.end() if i == index else close + len(lora_end)
         placeholder = f"<\x00{len(hidden)}>"
         own = placeholder if i == index else own
         parts += [text[pos : tag.start()], placeholder]
