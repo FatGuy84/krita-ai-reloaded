@@ -92,6 +92,21 @@ def toggle_group(text: str, index: int, group: str):
     return text[: match.end()] + content + text[close:]
 
 
+def toggle_free_group(text: str, index: int, group: str):
+    """For a LoRA without a block: puts the trigger group right after the tag, or takes
+    it out of the prompt if it is in there."""
+    if (match := nth_lora(text, index)) is None:
+        return text
+    if has_trigger_group(text, group):
+        return remove_trigger_group(text, group)
+    rest = text[match.end() :]
+    if rest.lstrip(" ").startswith(","):  # keep the tag's own comma: "<lora>, group, rest"
+        return text[: match.end()] + ", " + group + rest
+    if rest.strip() and not rest.lstrip(" ").startswith("\n"):
+        rest = ", " + rest.lstrip(" ")
+    return text[: match.end()] + " " + group + rest
+
+
 def wrap_lora(text: str, index: int, groups: list[str]):
     """Gives a LoRA without a block one: its trigger groups found in the prompt (outside
     other LoRAs' blocks) move into <lora:...> groups</lora> right after the tag."""
@@ -175,7 +190,7 @@ class LoraStrengthPopup(QMenu):
         layout.setColumnMinimumWidth(1, 160)
         text = self._prompt.toPlainText()
         matches = list(pattern_lora.finditer(text))
-        triggers = _known_triggers() if settings.lora_trigger_blocks and matches else {}
+        triggers = _known_triggers() if matches else {}
         if not matches:
             empty = QLabel(_("No LoRAs in the prompt"), content)
             empty.setStyleSheet(f"font-style: italic; color: {theme.grey};")
@@ -217,8 +232,9 @@ class LoraStrengthPopup(QMenu):
             )
             wrap.clicked.connect(lambda: self._edit(wrap_lora, index, groups))
             layout.addWidget(wrap, row, 3)
-        elif close is not None and groups:
-            self._add_trigger_chips(layout, row + 1, index, text[match.end() : close], groups)
+        if groups:
+            content = text if close is None else text[match.end() : close]
+            self._add_trigger_chips(layout, row + 1, index, content, groups, close is None)
 
         strength = parse_strength(match[2])
         if strength is None:
@@ -246,7 +262,13 @@ class LoraStrengthPopup(QMenu):
         layout.addWidget(spin, row, 2)
 
     def _add_trigger_chips(
-        self, layout: QGridLayout, row: int, index: int, content: str, groups: list[str]
+        self,
+        layout: QGridLayout,
+        row: int,
+        index: int,
+        content: str,
+        groups: list[str],
+        free: bool,
     ):
         chips = QWidget(layout.parentWidget())
         chip_layout = QGridLayout(chips)
@@ -277,7 +299,8 @@ class LoraStrengthPopup(QMenu):
             )
             chip.setCheckable(True)
             chip.setChecked(active)
-            chip.clicked.connect(lambda _checked, g=group: self._edit(toggle_group, index, g))
+            toggle = toggle_free_group if free else toggle_group
+            chip.clicked.connect(lambda _checked, g=group, t=toggle: self._edit(t, index, g))
             chip_layout.addWidget(chip, i // _chips_per_row, i % _chips_per_row)
         row_layout = QHBoxLayout()
         row_layout.addWidget(chips)
