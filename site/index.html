@@ -263,6 +263,13 @@ section.band.alt { background: var(--surface-000); }
 .copy p strong { color: var(--ink); font-weight: 600; }
 .media { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .media video { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-200); }
+/* short clips: one feature each, cut from the tour takes */
+.clips { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 24px; }
+.clips figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.clips h3 { font-size: 19px; font-weight: 700; }
+.clips p { font-size: 15px; color: var(--ink-muted); }
+@media (max-width: 980px) { .clips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .clips { grid-template-columns: minmax(0, 1fr); } }
 .media figcaption { font-size: 14px; color: var(--ink-muted); }
 
 .syntax { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0; border: 1px solid var(--hairline); border-radius: var(--radius-md); overflow: hidden; font-size: 15px; }
@@ -386,6 +393,7 @@ footer a:hover { color: var(--ink); }
       <a href="#browsers">Browsers</a>
       <a href="#prompt-ai">Prompt AI</a>
       <a href="#history">History</a>
+      <a href="#clips">Clips</a>
       <a href="#everything">All features</a>
       <a href="#install">Install</a>
       <a href="#faq">FAQ</a>
@@ -534,6 +542,7 @@ footer a:hover { color: var(--ink); }
           <h3>Browse</h3>
           <ul>
             <li>LoRA, Recipe, Style, Checkpoint and Wildcard pickers with live search, previews and favorites</li>
+            <li>LoRA strength sliders for every LoRA in the prompt, trigger words kept with their LoRA</li>
             <li>CivitAI and AnimaDex browsers: search and download without leaving Krita</li>
           </ul>
         </div>
@@ -541,7 +550,8 @@ footer a:hover { color: var(--ink); }
           <h3>Batch</h3>
           <ul>
             <li>Sequential <code>[[a|b]]</code> wildcards and Cartesian batches, up to 1000 per run</li>
-            <li>Loop Generate, Strength Sweep, Pause queue, live preview</li>
+            <li>XY grid: every combination as one labelled grid, same seed</li>
+            <li>Loop Generate, Strength Sweep, Pause queue, live preview, Cancel current</li>
             <li>Local prompt tools through Ollama</li>
           </ul>
         </div>
@@ -549,6 +559,7 @@ footer a:hover { color: var(--ink); }
           <h3>Organize</h3>
           <ul>
             <li>History with search, favorites, 1–5 star ratings and filters</li>
+            <li>Create Grid from any batch, saved to a grid folder</li>
             <li>Save to Eagle, copy image to clipboard</li>
             <li>Faster startup through disk-cached model lists</li>
           </ul>
@@ -573,6 +584,8 @@ footer a:hover { color: var(--ink); }
           </dl>
           <p><strong>LoRA tags switch per item.</strong> Put <code>&lt;lora:name:0.8&gt;</code> inside a group and each image in the batch gets its own LoRA set. Upstream would apply whatever the first evaluation picked to all of them.</p>
           <div class="controls">
+            <div class="ctl"><b><span class="g" aria-hidden="true">#</span>XY grid</b><span>Runs every combination once and opens the results as one labelled grid at full resolution: the first group across, the rest down. Same seed in every cell.</span></div>
+            <div class="ctl"><b><span class="g" aria-hidden="true">▦</span>Create Grid</b><span>Right-click a batch in the history to lay it out afterwards, each cell labelled with what sets it apart.</span></div>
             <div class="ctl"><b><span class="g" aria-hidden="true">↻</span>Loop Generate</b><span>Enqueues another batch every time the queue empties, until you turn it off. Turns itself off if a generation fails.</span></div>
             <div class="ctl"><b><span class="g" aria-hidden="true">⇅</span>Strength Sweep</b><span>One image per strength value, for example 40% to 75% in steps of 5, with a fixed seed so strength is the only difference.</span></div>
             <div class="ctl"><b><span class="g" aria-hidden="true">II</span>Pause queue</b><span>The running image finishes, queued batches wait until you click again.</span></div>
@@ -611,6 +624,7 @@ footer a:hover { color: var(--ink); }
           <p>Thumbnails load as you scroll, so hundreds of LoRAs open without a stall, video previews included. Filter by tag and base model, sort by name or date added, and insert trigger words with one click.</p>
           <p>Favorites sync both ways with <strong>ComfyUI-Lora-Manager</strong>. A small badge in each thumbnail tells you whether CivitAI's license allows commercial use of the images you make with it.</p>
           <p>Select several and insert them as one <code>[[…]]</code> group to compare them in a single batch.</p>
+          <p><strong>Strength sliders.</strong> The arrow on the LoRA button lists every LoRA in the prompt with a slider. Trigger words stay in a block with their LoRA, so removing one takes both, and Enhance Prompt leaves them alone.</p>
         </div>
         <figure class="media">
           <video src="media/demo-lora-browser.mp4" poster="media/demo-lora-browser.webp" width="1280" height="696" muted loop playsinline controls preload="none" aria-label="LoRA browser: three LoRAs picked across different searches, added to the prompt as one sequential group, then one image generated per LoRA"></video>
@@ -682,78 +696,133 @@ footer a:hover { color: var(--ink); }
     </div>
   </section>
 
+  <section class="band alt" id="clips">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">Short clips</p>
+        <h2>New since the last tour, recorded in Krita.</h2>
+        <p>Each clip is cut from the same night-train session as the video. Nothing is mocked up.</p>
+      </div>
+      <div class="clips">
+        <figure class="media">
+          <video src="media/demo-xy-grid.mp4" poster="media/demo-xy-grid.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="XY grid ticked in the queue popup, four cells forming in the live preview, then a two by two grid labelled lavender fields, snowy mountains, sunset and full moon"></video>
+          <h3>XY grid</h3>
+          <p>Two wildcard groups, one tick, one labelled grid in its own document.</p>
+        </figure>
+        <figure class="media">
+          <video src="media/demo-create-grid.mp4" poster="media/demo-create-grid.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="History search for the loop batches, right-click on a batch header, Create Grid, and the batch opens as a labelled grid"></video>
+          <h3>Create Grid</h3>
+          <p>A night of Loop Generate, laid out from the history with one right-click.</p>
+        </figure>
+        <figure class="media">
+          <video src="media/demo-lora-strength.mp4" poster="media/demo-lora-strength.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="The LoRA popup with a slider for the pixel art LoRA, moved from 0.30 to 0.90, then the same seed rendered again in full pixel art"></video>
+          <h3>LoRA strength slider</h3>
+          <p>Slide the pixel-art LoRA from 0.30 to 0.90; the number in the prompt follows.</p>
+        </figure>
+        <figure class="media">
+          <video src="media/demo-ai-select.mp4" poster="media/demo-ai-select.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="Select by Text with the word sky, marching ants around the sky, and a new aurora sky painted into just that selection"></video>
+          <h3>AI Select</h3>
+          <p>Type sky, get the selection, repaint only that part.</p>
+        </figure>
+        <figure class="media">
+          <video src="media/demo-strength-sweep.mp4" poster="media/demo-strength-sweep.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="Strength Sweep dialog set from 30 to 80 percent in steps of 10, then the six results stepped through on the canvas"></video>
+          <h3>Strength Sweep</h3>
+          <p>One image per strength, same seed, 30 to 80 percent.</p>
+        </figure>
+        <figure class="media">
+          <video src="media/demo-preview-cancel.mp4" poster="media/demo-preview-cancel.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="Live preview showing an image form on the canvas, a second cat appears in the window, Cancel skips it and the next image renders"></video>
+          <h3>Live preview and Cancel</h3>
+          <p>Watch each image form. Skip the miss, the queue goes on.</p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
   <section class="wall-band scope-dark" id="everything" aria-labelledby="everything-h">
     <div class="wrap">
       <div class="sec-head">
         <p class="overline">Also in the box</p>
-        <h2 id="everything-h">65 features in one plugin.</h2>
+        <h2 id="everything-h">78 features in one plugin.</h2>
       </div>
       <ul class="wall">
-          <li class="hot" style="--d:0.00s">Style picker</li>
-          <li class="hot" style="--d:2.10s">Generate across styles</li>
-          <li class="hot" style="--d:0.46s">CivitAI browser</li>
-          <li style="--d:0.28s">Batch download</li>
-          <li style="--d:1.72s">Commercial-use badge</li>
-          <li class="hot" style="--d:1.19s">Control layers</li>
-          <li class="hot" style="--d:0.56s">Sequential [[a|b]] wildcards</li>
-          <li style="--d:1.75s">Cartesian batches</li>
-          <li style="--d:1.79s">a×b batch count</li>
-          <li style="--d:1.23s">Batch count up to 1000</li>
-          <li class="hot" style="--d:1.54s">File wildcards</li>
-          <li style="--d:1.40s">Wildcard editor</li>
-          <li class="hot" style="--d:1.86s">Wildcard generator</li>
-          <li style="--d:0.35s">@Name references</li>
-          <li style="--d:0.84s">Layer references</li>
-          <li class="hot" style="--d:1.65s">Enhance prompt</li>
-          <li style="--d:1.61s">Add detail only</li>
-          <li style="--d:0.04s">Rewrite from scratch</li>
-          <li class="hot" style="--d:1.51s">Modify with instruction</li>
-          <li style="--d:1.02s">Exclusions to negative</li>
-          <li class="hot" style="--d:2.14s">Describe image</li>
-          <li style="--d:1.82s">Describe selection</li>
-          <li class="hot" style="--d:0.14s">Split into sections</li>
-          <li class="hot" style="--d:1.09s">Variations</li>
-          <li class="hot" style="--d:2.17s">Prompt batch</li>
-          <li style="--d:1.58s">Prompt revert</li>
-          <li style="--d:1.44s">Per-model prompt profiles</li>
-          <li class="hot" style="--d:1.33s">LoRA browser</li>
-          <li style="--d:2.07s">Lora Manager sync</li>
-          <li style="--d:2.00s">Trigger words</li>
-          <li style="--d:0.81s">Content filter</li>
+          <li class="hot" style="--d:1.11s">Style picker</li>
+          <li class="hot" style="--d:0.00s">Generate across styles</li>
+          <li class="hot" style="--d:2.24s">CivitAI browser</li>
+          <li style="--d:0.90s">Batch download</li>
+          <li style="--d:1.13s">Commercial-use badge</li>
+          <li class="hot" style="--d:1.75s">Control layers</li>
+          <li class="hot" style="--d:0.81s">Sequential [[a|b]]</li>
+          <li style="--d:1.40s">Cartesian batches</li>
+          <li style="--d:0.47s">a×b batch count</li>
+          <li style="--d:2.04s">Batch count up to 1000</li>
+          <li class="hot" style="--d:0.70s">File wildcards</li>
+          <li style="--d:1.69s">Wildcard editor</li>
+          <li class="hot" style="--d:0.93s">Wildcard generator</li>
+          <li style="--d:0.87s">@Name references</li>
+          <li style="--d:1.80s">Layer references</li>
+          <li class="hot" style="--d:1.37s">Enhance prompt</li>
+          <li style="--d:0.58s">Add detail only</li>
+          <li style="--d:1.28s">Rewrite from scratch</li>
+          <li class="hot" style="--d:0.29s">Modify with instruction</li>
+          <li style="--d:0.38s">Exclusions to negative</li>
+          <li class="hot" style="--d:0.84s">Describe image</li>
+          <li style="--d:0.61s">Describe selection</li>
+          <li class="hot" style="--d:1.77s">Split into sections</li>
+          <li class="hot" style="--d:0.96s">Variations</li>
+          <li class="hot" style="--d:1.22s">Prompt batch</li>
+          <li style="--d:0.03s">Prompt revert</li>
+          <li style="--d:1.48s">Per-model prompt profiles</li>
+          <li class="hot" style="--d:1.25s">LoRA browser</li>
+          <li style="--d:0.64s">Lora Manager sync</li>
+          <li style="--d:0.49s">Trigger words</li>
+          <li style="--d:1.31s">Content filter</li>
           <li style="--d:0.67s">Insert position</li>
-          <li class="hot" style="--d:1.89s">Recipe browser</li>
-          <li class="hot" style="--d:0.60s">AnimaDex browser</li>
-          <li style="--d:0.18s">Save as wildcard</li>
-          <li class="hot" style="--d:0.53s">Strength sweep</li>
-          <li class="hot" style="--d:0.98s">Loop Generate</li>
-          <li class="hot" style="--d:0.49s">Live preview</li>
-          <li class="hot" style="--d:2.24s">Cancel current</li>
-          <li class="hot" style="--d:1.26s">Pause queue</li>
-          <li class="hot" style="--d:1.68s">Unload models</li>
-          <li style="--d:1.93s">VRAM meter</li>
-          <li style="--d:0.11s">Status line</li>
-          <li class="hot" style="--d:0.39s">AI Select</li>
-          <li style="--d:1.30s">Select subject</li>
-          <li style="--d:1.05s">Remove background</li>
-          <li style="--d:0.91s">Model list cache</li>
-          <li style="--d:0.25s">Scan server</li>
-          <li style="--d:2.03s">Styles from checkpoints</li>
-          <li style="--d:0.07s">Checkpoint thumbnails</li>
-          <li style="--d:0.77s">Base-model filter</li>
-          <li style="--d:0.70s">Batch grouping</li>
-          <li class="hot" style="--d:1.47s">History search</li>
-          <li class="hot" style="--d:2.21s">Favorites</li>
-          <li class="hot" style="--d:1.12s">1–5 star ratings</li>
-          <li class="hot" style="--d:0.21s">Rating filters</li>
-          <li style="--d:0.88s">History shortcuts</li>
-          <li style="--d:0.42s">Copy image to clipboard</li>
-          <li style="--d:0.74s">Apply style / seed</li>
-          <li style="--d:0.95s">Generation time</li>
-          <li style="--d:0.63s">Mode in metadata</li>
-          <li class="hot" style="--d:1.16s">Save to Eagle</li>
-          <li class="hot" style="--d:1.37s">DLSS5 enhance</li>
-          <li style="--d:0.32s">Tiled DLSS5</li>
-          <li style="--d:1.96s">Krea 2 identity edit</li>
+          <li class="hot" style="--d:2.07s">Recipe browser</li>
+          <li class="hot" style="--d:2.15s">AnimaDex browser</li>
+          <li style="--d:1.89s">Save as wildcard</li>
+          <li class="hot" style="--d:2.21s">Strength sweep</li>
+          <li class="hot" style="--d:1.57s">Loop Generate</li>
+          <li class="hot" style="--d:0.99s">Live preview</li>
+          <li class="hot" style="--d:2.12s">Cancel current</li>
+          <li class="hot" style="--d:0.76s">Pause queue</li>
+          <li class="hot" style="--d:0.52s">Unload models</li>
+          <li style="--d:0.23s">VRAM meter</li>
+          <li style="--d:1.72s">Status line</li>
+          <li class="hot" style="--d:0.06s">AI Select</li>
+          <li style="--d:1.83s">Select subject</li>
+          <li style="--d:1.43s">Remove background</li>
+          <li style="--d:0.73s">Model list cache</li>
+          <li style="--d:2.18s">Scan server</li>
+          <li style="--d:2.09s">Styles from checkpoints</li>
+          <li style="--d:1.66s">Checkpoint thumbnails</li>
+          <li style="--d:1.08s">Base-model filter</li>
+          <li style="--d:1.63s">Batch grouping</li>
+          <li class="hot" style="--d:1.16s">History search</li>
+          <li class="hot" style="--d:0.41s">Favorites</li>
+          <li class="hot" style="--d:2.01s">1–5 star ratings</li>
+          <li class="hot" style="--d:1.05s">Rating filters</li>
+          <li style="--d:1.51s">History shortcuts</li>
+          <li style="--d:0.09s">Copy image to clipboard</li>
+          <li style="--d:1.95s">Apply style / seed</li>
+          <li style="--d:1.02s">Generation time</li>
+          <li style="--d:0.15s">Mode in metadata</li>
+          <li class="hot" style="--d:0.44s">Save to Eagle</li>
+          <li class="hot" style="--d:1.92s">DLSS5 enhance</li>
+          <li style="--d:1.54s">Tiled DLSS5</li>
+          <li style="--d:1.60s">Krea 2 identity edit</li>
+          <li style="--d:0.32s">MOSS-Image</li>
+          <li class="hot" style="--d:0.12s">XY grid</li>
+          <li class="hot" style="--d:0.79s">Create grid from history</li>
+          <li style="--d:1.86s">Full-res comparison grids</li>
+          <li style="--d:0.20s">Grid auto-save</li>
+          <li class="hot" style="--d:1.34s">LoRA strength sliders</li>
+          <li style="--d:0.35s">Trigger word blocks</li>
+          <li style="--d:1.98s">Copy seed</li>
+          <li style="--d:0.26s">Favorite style from result</li>
+          <li style="--d:0.17s">Model name in layer names</li>
+          <li style="--d:1.45s">Batch count on Generate</li>
+          <li style="--d:0.55s">Multi-line [[a|b]] groups</li>
+          <li style="--d:1.19s">Prompt comments kept</li>
       </ul>
       <p class="wall-legend"><i aria-hidden="true"></i>Outlined in amber and set bold: shown in the tour video.</p>
       <div class="more-msg">
