@@ -71,7 +71,7 @@ item 2 gets `b`, item 3 gets `c`, item 4 wraps back to `a`, and so on — useful
 for systematically running through a fixed set of variations instead of
 hoping the dice land right.
 
-![Sequential wildcards, auto batch-count, and preview size](media/demo-wildcards.gif)
+![Two sequential wildcard groups, batch count from a×b, four images in order](media/demo-wildcards.gif)
 
 Multiple `[[...]]` groups in the same prompt combine into a **Cartesian
 product** across the whole batch. For example:
@@ -122,7 +122,7 @@ saved to the grid folder like the others.
 
 ![Create Grid: a Loop Generate batch laid out as a labelled grid from the history](media/demo-create-grid.gif)
 
-![Two sequential wildcard groups with per-item LoRA switching and auto batch-count](media/demo-wildcards-lora-batch.gif)
+![Wildcard library: search a file, insert it as a sequential group, one image per entry](media/demo-wildcard-library.gif)
 
 Other batch changes:
 * **Batch count up to 1000** (upstream caps at 10), with a spinbox you can
@@ -303,7 +303,7 @@ dropdown. It talks to [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI
 if you have it installed, and falls back to a plain file-name list otherwise
 (no crash, just fewer features — no previews/tags/trigger words).
 
-![LoRA browser: multi-select, wildcard-group insert, add to prompt](media/demo-lora-browser.gif)
+![LoRA browser: three LoRAs picked across searches, added as one sequential group, one image each](media/demo-lora-browser.gif)
 
 With Lora Manager available you get:
 * **Preview thumbnails** for every LoRA, loaded lazily as you scroll so
@@ -393,7 +393,7 @@ picker (previews, search, base-model filter, favorites, sort by name/date
 added), but applying a recipe fills in a whole prompt setup at once instead
 of a single LoRA:
 
-![Recipe browser: apply a saved prompt+LoRA combo, then generate](media/demo-recipe-browser.gif)
+![Recipe browser: save a result as a recipe, clear the prompt, restore it from the browser](media/demo-recipe-browser.gif)
 
 * **Add to Prompt** appends the recipe's prompt and LoRA tags to whatever
   you already have, on a new line
@@ -699,7 +699,7 @@ much faster.
   round-trip through the filesystem. If you rated the image (1-5★) in
   Krita, that rating carries over to Eagle's own star rating.
 
-  ![Sending a rated image to Eagle and reviewing it there](media/demo-eagle-export.gif)
+  ![Sending two images to Eagle and reviewing them there, rating included](media/demo-eagle-export.gif)
 * **DLSS5 Enhance**: right-click a result → "DLSS5 Enhance" → Cinematic /
   Default / Natural runs it through NVIDIA DLSS 5 neural rendering
   (reconstructed skin, hair and lighting detail) at the same resolution. The
