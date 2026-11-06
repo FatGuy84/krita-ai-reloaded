@@ -28,6 +28,7 @@ Feature videos and a full tour are on the
   <a href="#civitai-browser">CivitAI</a> ·
   <a href="#style-picker">Styles</a> ·
   <a href="#history--export">History</a> ·
+  <a href="#ai-selection">AI Select</a> ·
   <a href="#custom-workflows">Workflows</a> ·
   <a href="#installation">Install</a>
 </p>
@@ -54,7 +55,8 @@ or [GitHub Sponsors](https://github.com/sponsors/FatGuy84) — and please consid
 | Browse | Batch | Organise |
 | --- | --- | --- |
 | **LoRA, Recipe, Style, Checkpoint and Wildcard pickers** with live search, previews and favorites | **Sequential `[[a\|b]]` wildcards**, Cartesian batches, up to 1000 per run, Loop Generate | **History** with search, favorites, 1–5 star ratings and filters, plus Save to Eagle |
-| **CivitAI and AnimaDex browsers** — search and download without leaving Krita | **Local prompt tools** via Ollama: enhance, batch prompts, generate wildcard files | **Faster startup** through disk-cached model lists, and DLSS5 Enhance on results, canvas or selection — tiled for any size |
+| **CivitAI and AnimaDex browsers** — search and download without leaving Krita | **XY grid** and **Create Grid**: every combination or any batch as one labelled grid | **AI Select** — select by text, select subject, remove background |
+| **LoRA strength sliders**, trigger words kept with their LoRA | **Local prompt tools** via Ollama: enhance, batch prompts, generate wildcard files | **Faster startup** through disk-cached model lists, and DLSS5 Enhance on results, canvas or selection — tiled for any size |
 
 <br>
 
@@ -109,12 +111,16 @@ gives a 3×3 grid: LoRAs across, weights down. Only the main prompt's groups
 make up the grid, groups in the negative or in region prompts are not axes.
 Cancelled jobs leave their cell empty.
 
+![XY grid: two sequential groups rendered once each and opened as a labelled 2×2 grid](media/demo-xy-grid.gif)
+
 **Grid from history**: right-click a batch header in the history and pick
 **Create Grid** to lay out a finished batch afterwards. A batch generated with XY
 grid gets its rows and columns back. Any other batch gets a near-square grid where
 each cell is labelled with what sets it apart: the prompt parts not every image
 shares (the evaluated wildcards), plus the seed when seeds differ. The grid is
 saved to the grid folder like the others.
+
+![Create Grid: a Loop Generate batch laid out as a labelled grid from the history](media/demo-create-grid.gif)
 
 ![Two sequential wildcard groups with per-item LoRA switching and auto batch-count](media/demo-wildcards-lora-batch.gif)
 
@@ -133,6 +139,8 @@ Other batch changes:
   that makes; with a fixed seed one image per value is queued, so strength is the
   only difference. Turn the fixed seed off to get *Images per step* (1–50) with
   random seeds. Your previous strength and batch count are restored.
+
+  ![Strength Sweep from 30 to 80 percent, one image per value with the same seed](media/demo-strength-sweep.gif)
 * **Pause queue**: a pause toggle in the queue group, before the ✕ and queue buttons. The running generation
   finishes, queued jobs (batches, Loop Generate) wait until you click again.
   ComfyUI cannot freeze a sampler mid-run, so this holds the *queue*, not the
@@ -152,6 +160,8 @@ Other batch changes:
   Update rate is set in Settings → *Preview Update Interval* (0.1–5.0 s, default 0.3 s).
   Picking a result in the history pauses previews so they don't pull the canvas away. Uses ComfyUI's own
   previews (low resolution, quality depends on the server's preview method).
+
+  ![Live preview while generating, and Cancel skipping an image that went wrong](media/demo-preview-cancel.gif)
 
   ![Loop Generate keeps enqueuing batches until toggled off](media/demo-loop-generate.gif)
 
@@ -353,6 +363,8 @@ for its strength (−2 to 3) and a button that removes the tag. Changes go
 straight into the prompt text, and Ctrl+Z undoes them, one slider drag at a
 time. A tag without a strength shows 1. A strength that is itself a wildcard
 (`<lora:name:[[0.6|1.0]]>`) is shown but stays editable only in the prompt.
+
+![LoRA strength popup: a slider moves a pixel-art LoRA from 0.30 to 0.90](media/demo-lora-strength.gif)
 
 **Trigger blocks**: the LoRA browser and autocomplete insert a LoRA together
 with its trigger words as one block, closed by `</lora>`:
@@ -746,6 +758,8 @@ segmentation model on the ComfyUI server and hands the result back to Krita:
 * **Remove Background** — adds a transparency mask to the active layer that
   hides everything but its subject. Nothing is erased: paint on the mask to
   fix the edges, or delete it to get the background back.
+
+![Select by Text "sky", then a new sky generated into just that selection](media/demo-ai-select.gif)
 
 All three are also Krita actions (Settings → Configure Krita → Keyboard
 Shortcuts → Scripts), so you can give them shortcuts. They run in the queue
