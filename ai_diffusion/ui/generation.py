@@ -1676,9 +1676,8 @@ class GenerationWidget(QWidget):
         self.pause_button.setIcon(self._pause_icon_active if paused else self._pause_icon)
 
     def _generate_combinations(self):
-        if count := wildcard_combination_count(self.model):
-            self.model.batch_count = count
-            self.model.generate()
+        self.model.batch_count = wildcard_combination_count(self.model) or 1
+        self.model.generate()
 
     def apply_result(self, item: QListWidgetItem):
         job_id, index = self.history.item_info(item)

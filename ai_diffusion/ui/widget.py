@@ -389,8 +389,7 @@ class QueuePopup(QMenu):
         self.model.resolution_multiplier = value / 10
 
     def _set_batch_from_combinations(self):
-        if count := wildcard_combination_count(self._model):
-            self._model.batch_count = count
+        self._model.batch_count = wildcard_combination_count(self._model) or 1
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         if parent := cast(QWidget, self.parent()):
