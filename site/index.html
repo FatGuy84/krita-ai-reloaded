@@ -1263,20 +1263,27 @@ footer a:hover { color: var(--ink); }
   }
 
   // Recorded clips: play while on screen, unless the visitor asked for less motion.
-  // Off screen a clip drops its source: Chrome keeps one connection open per loaded video,
-  // and after six of them every later clip and image on the page waited for a free one.
+  // Each clip is fetched whole once and plays from memory. Streamed, Chrome keeps a connection
+  // open per video, and GitHub Pages allows six per host: after six clips every later clip
+  // and image on the page waited for a free one.
   const clips = document.querySelectorAll(".media video");
-  if (!still.matches && "IntersectionObserver" in window) {
+  if (!still.matches && "IntersectionObserver" in window && window.fetch) {
+    const fetched = new Map();
+    const load = v => fetched.get(v) || fetched.set(v, fetch(v.dataset.src)
+      .then(r => r.ok ? r.blob() : Promise.reject())
+      .then(b => { v.src = URL.createObjectURL(b); }, () => { v.src = v.dataset.src; })).get(v);
     const seen = new IntersectionObserver(entries => entries.forEach(en => {
       const v = en.target;
-      if (en.isIntersecting) {
-        if (!v.getAttribute("src")) v.src = v.dataset.src;
-        v.preload = "auto"; v.play().catch(() => {});
-      } else if (v.getAttribute("src")) {
-        v.pause(); v.removeAttribute("src"); v.load();
-      }
+      v.dataset.seen = en.isIntersecting ? "1" : "";
+      if (en.isIntersecting) load(v).then(() => { if (v.dataset.seen) v.play().catch(() => {}); });
+      else v.pause();
     }), { threshold: 0.4 });
-    clips.forEach(v => { v.controls = false; v.dataset.src = v.getAttribute("src"); seen.observe(v); });
+    clips.forEach(v => {
+      v.controls = false;
+      v.dataset.src = v.getAttribute("src");
+      v.removeAttribute("src");
+      seen.observe(v);
+    });
   }
 
   // Blocks rise in one after another within their group; the HTML already holds the final state
