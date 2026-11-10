@@ -1262,14 +1262,21 @@ footer a:hover { color: var(--ink); }
     fill.observe(wallBand);
   }
 
-  // Recorded clips: play while on screen, unless the visitor asked for less motion
+  // Recorded clips: play while on screen, unless the visitor asked for less motion.
+  // Off screen a clip drops its source: Chrome keeps one connection open per loaded video,
+  // and after six of them every later clip and image on the page waited for a free one.
   const clips = document.querySelectorAll(".media video");
   if (!still.matches && "IntersectionObserver" in window) {
     const seen = new IntersectionObserver(entries => entries.forEach(en => {
       const v = en.target;
-      if (en.isIntersecting) { v.preload = "auto"; v.play().catch(() => {}); } else v.pause();
+      if (en.isIntersecting) {
+        if (!v.getAttribute("src")) v.src = v.dataset.src;
+        v.preload = "auto"; v.play().catch(() => {});
+      } else if (v.getAttribute("src")) {
+        v.pause(); v.removeAttribute("src"); v.load();
+      }
     }), { threshold: 0.4 });
-    clips.forEach(v => { v.controls = false; seen.observe(v); });
+    clips.forEach(v => { v.controls = false; v.dataset.src = v.getAttribute("src"); seen.observe(v); });
   }
 
   // Blocks rise in one after another within their group; the HTML already holds the final state
