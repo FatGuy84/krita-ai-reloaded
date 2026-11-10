@@ -15,7 +15,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: one column of feature bands, each pairing a short claim with the real plugin surface
-   (an interactive docker mock in the hero, recorded clips below). Tokens from branding/design-system/tokens.json. */
+   (an interactive docker mock in the hero, recorded clips and HyperFrames explainers below, a CSS
+   ticker, scroll reveals and counters). Tokens from branding/design-system/tokens.json. */
 :root {
   --surface-000: #0e0b07;
   --surface-100: #17120c;
@@ -271,6 +272,69 @@ section.band.alt { background: var(--surface-000); }
 @media (max-width: 980px) { .clips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .clips { grid-template-columns: minmax(0, 1fr); } }
 .media figcaption { font-size: 14px; color: var(--ink-muted); }
+.media figcaption code { white-space: normal; overflow-wrap: anywhere; }
+
+/* HyperFrames explainers: wide loops between a band's head and its content, a portrait one in At a glance */
+.media.wide { margin-top: 40px; max-width: 960px; }
+.media.wide h3 { font-size: 19px; font-weight: 700; }
+.media.wide p { font-size: 15px; color: var(--ink-muted); }
+.glance-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 48px; align-items: center; }
+.media.portrait { width: clamp(200px, 22vw, 260px); }
+@media (max-width: 760px) {
+  .glance-top { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .media.portrait { width: min(260px, 100%); }
+}
+
+/* feature ticker under the hero: the list is doubled so shifting each copy by its own width loops without a seam */
+.ticker { display: flex; overflow: hidden; border-block: 1px solid var(--hairline); background: var(--surface-200); }
+.ticker ul { display: flex; flex-shrink: 0; margin: 0; padding: 0; list-style: none; animation: ticker 60s linear infinite; }
+.ticker:hover ul { animation-play-state: paused; }
+.ticker li { display: flex; align-items: center; gap: 18px; padding: 14px 0 14px 18px; white-space: nowrap; font-family: var(--font-cond); font-weight: 700; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); }
+.ticker li::after { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--amber-400); }
+@keyframes ticker { to { transform: translateX(-100%); } }
+
+.stats { margin: 24px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stats > div { border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 20px; background: var(--surface-200); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stats dt { font-weight: 700; font-size: clamp(36px, 4.4vw, 52px); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stats dd { margin: 0; font-size: 15px; color: var(--ink-muted); }
+@media (max-width: 980px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* the full tour: a YouTube facade, hidden until the page names a video id */
+[hidden] { display: none !important; }
+.tour { margin-top: 40px; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-200); }
+.tour-frame { position: relative; aspect-ratio: 16 / 9; background: var(--surface-000); border-right: 1px solid var(--border); }
+.tour-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.tour-play { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+.tour-play img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tour-play .disc { position: absolute; left: 24px; bottom: 24px; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--amber-400); color: var(--on-amber); }
+.tour-play:hover .disc { background: var(--amber-300); }
+.tour-play .disc svg { width: 28px; height: 28px; margin-left: 4px; }
+.tour-copy { padding: 28px; display: flex; flex-direction: column; gap: 14px; justify-content: center; min-width: 0; }
+.tour-copy h3 { font-size: 26px; line-height: 1.15; font-weight: 700; letter-spacing: -0.015em; }
+.tour-copy .fine { font-size: 14px; color: var(--ink-muted); }
+.chapters { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.chapters li { font-size: 13px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 4px 8px; background: var(--surface-100); }
+@media (max-width: 980px) {
+  .tour { grid-template-columns: minmax(0, 1fr); }
+  .tour-frame { border-right: 0; border-bottom: 1px solid var(--border); }
+}
+
+.gallery { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.gallery figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.gallery img { display: block; width: 100%; height: auto; aspect-ratio: 990 / 678; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-200); transition: transform 0.32s cubic-bezier(.2,.7,.2,1), border-color 0.2s; }
+.gallery figcaption { font-size: 13px; line-height: 18px; color: var(--ink-muted); transition: transform 0.32s cubic-bezier(.2,.7,.2,1), color 0.2s; }
+.gallery figcaption code { font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
+@media (hover: hover) {
+  .gallery figure:hover img { transform: translateY(-6px) rotate(-0.8deg) scale(1.02); border-color: var(--mark); }
+  .gallery figure:nth-child(even):hover img { transform: translateY(-6px) rotate(0.8deg) scale(1.02); }
+  .gallery figure:hover figcaption { transform: translateX(4px); color: var(--ink); }
+}
+@media (max-width: 980px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .gallery { gap: var(--space-2); } }
+
+/* blocks rise in as they scroll into view; only when the script armed it and motion is welcome */
+.rv-on .rv { opacity: 0; transform: translateY(18px); transition: opacity 0.64s cubic-bezier(.2,.7,.2,1), transform 0.64s cubic-bezier(.2,.7,.2,1); }
+.rv-on .rv.in { opacity: 1; transform: none; }
 
 .syntax { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0; border: 1px solid var(--hairline); border-radius: var(--radius-md); overflow: hidden; font-size: 15px; }
 .syntax > * { padding: 10px 14px; border-top: 1px solid var(--hairline); background: var(--surface-200); }
@@ -396,6 +460,7 @@ footer a:hover { color: var(--ink); }
       <a href="#prompt-ai">Prompt AI</a>
       <a href="#history">History</a>
       <a href="#clips">Clips</a>
+      <a href="#gallery">Gallery</a>
       <a href="#everything">All features</a>
       <a href="#install">Install</a>
       <a href="#faq">FAQ</a>
@@ -463,6 +528,15 @@ footer a:hover { color: var(--ink); }
       </div>
     </div>
   </section>
+
+  <div class="ticker scope-dark">
+    <ul>
+      <li>Sequential wildcards</li><li>XY grid</li><li>Loop Generate</li><li>Strength Sweep</li><li>LoRA Browser</li><li>LoRA strength sliders</li><li>CivitAI downloads</li><li>AnimaDex</li><li>Prompt AI on Ollama</li><li>AI Select</li><li>DLSS5 Enhance</li><li>Searchable history</li><li>1–5 star ratings</li><li>Create Grid</li><li>Save to Eagle</li>
+    </ul>
+    <ul aria-hidden="true">
+      <li>Sequential wildcards</li><li>XY grid</li><li>Loop Generate</li><li>Strength Sweep</li><li>LoRA Browser</li><li>LoRA strength sliders</li><li>CivitAI downloads</li><li>AnimaDex</li><li>Prompt AI on Ollama</li><li>AI Select</li><li>DLSS5 Enhance</li><li>Searchable history</li><li>1–5 star ratings</li><li>Create Grid</li><li>Save to Eagle</li>
+    </ul>
+  </div>
 
   <section class="demo scope-dark" id="try" aria-labelledby="try-h">
     <div class="wrap">
@@ -534,10 +608,16 @@ footer a:hover { color: var(--ink); }
 
   <section class="band" id="glance">
     <div class="wrap">
-      <div class="sec-head">
-        <p class="overline">At a glance</p>
-        <h2>Everything upstream does, plus the parts that took too many clicks.</h2>
-        <p>This fork adds UX and power-user features on top of Acly's plugin and leaves the inference core alone. Your styles, servers and workflows keep working.</p>
+      <div class="glance-top">
+        <div class="sec-head">
+          <p class="overline">At a glance</p>
+          <h2>Everything upstream does, plus the parts that took too many clicks.</h2>
+          <p>This fork adds UX and power-user features on top of Acly's plugin and leaves the inference core alone. Your styles, servers and workflows keep working.</p>
+        </div>
+        <figure class="media portrait">
+          <video src="media/motion-hero.mp4" poster="media/motion-hero.webp" width="720" height="1280" muted loop playsinline controls preload="none" aria-label="Animation: a pencil sketch of a cat draws itself, then six generated results of the same cat in different places replace it one by one and land in the history"></video>
+          <figcaption>A pencil sketch, then the same cat in six places.</figcaption>
+        </figure>
       </div>
       <div class="glance">
         <div>
@@ -567,6 +647,12 @@ footer a:hover { color: var(--ink); }
           </ul>
         </div>
       </div>
+      <dl class="stats">
+        <div><dt><span data-count="1000">1000</span></dt><dd>images in one batch run</dd></div>
+        <div><dt><span data-count="7">7</span></dt><dd>visual browsers and pickers</dd></div>
+        <div><dt><span data-count="4">4</span></dt><dd>prompt actions per history entry</dd></div>
+        <div><dt>0</dt><dd>cloud accounts needed for Prompt AI</dd></div>
+      </dl>
     </div>
   </section>
 
@@ -576,6 +662,10 @@ footer a:hover { color: var(--ink); }
         <p class="overline">Sequential wildcards and batch control</p>
         <h2>Run through a fixed set of variations instead of hoping the dice land right.</h2>
       </div>
+      <figure class="media wide">
+        <video src="media/motion-grid.mp4" poster="media/motion-grid.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="Animation: the prompt black cat, [[lavender fields|snowy mountains]], [[sunset|full moon]] types itself, its options become the rows and columns of a two by two grid, and the four results fill it: 2 × 2 = batch 4"></video>
+        <figcaption>Two groups of two options make four images, every combination in order.</figcaption>
+      </figure>
       <div class="split">
         <div class="copy">
           <dl class="syntax">
@@ -705,6 +795,27 @@ footer a:hover { color: var(--ink); }
         <h2>New since the last tour, recorded in Krita.</h2>
         <p>Each clip is cut from the same night-train session as the video. Nothing is mocked up.</p>
       </div>
+      <div class="tour" data-youtube="">
+        <div class="tour-frame">
+          <button type="button" class="tour-play" aria-label="Play the full tour, 8 minutes, from YouTube">
+            <img src="media/tour-poster.webp" alt="" width="1280" height="720">
+            <span class="disc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></span>
+          </button>
+        </div>
+        <div class="tour-copy">
+          <p class="overline">Full tour · 8 min · narrated</p>
+          <h3>From a pencil sketch to a rated favorite.</h3>
+          <ol class="chapters" aria-label="Chapters">
+            <li>Pick a look</li>
+            <li>Write prompts that vary</li>
+            <li>Let your local model help</li>
+            <li>Find the right LoRA</li>
+            <li>Scale it up</li>
+            <li>Keep the best</li>
+          </ol>
+          <p class="fine">Plays from YouTube. Nothing loads from YouTube until you click play.</p>
+        </div>
+      </div>
       <div class="clips">
         <figure class="media">
           <video src="media/demo-xy-grid.mp4" poster="media/demo-xy-grid.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="XY grid ticked in the queue popup, four cells forming in the live preview, then a two by two grid labelled lavender fields, snowy mountains, sunset and full moon"></video>
@@ -736,6 +847,35 @@ footer a:hover { color: var(--ink); }
           <h3>Live preview and Cancel</h3>
           <p>Watch each image form. Skip the miss, the queue goes on.</p>
         </figure>
+      </div>
+      <figure class="media wide">
+        <video src="media/motion-dlss.mp4" poster="media/motion-dlss.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="Animation: DLSS5 Enhance runs for four seconds on a selection around the cat, then a divider sweeps across to compare before and after, and the view zooms in on the fur and eyes"></video>
+        <h3>DLSS5 Enhance Selection</h3>
+        <p>The same test frame before and after, Natural look, animated as a side-by-side sweep.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section class="band" id="gallery">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="overline">Gallery</p>
+        <h2>One cat, one red scarf, a whole night of trains.</h2>
+        <p>Results from the tour, shown as generated. Each caption names the feature that made it.</p>
+      </div>
+      <div class="gallery">
+        <figure><img src="media/gallery/cat-lavender-moon.webp" alt="Black cat in a red scarf at a train window, lavender fields under a full moon outside" width="990" height="678" loading="lazy"><figcaption><code>[[lavender fields|snowy mountains]], [[sunset|full moon]]</code>: lavender fields, full moon</figcaption></figure>
+        <figure><img src="media/gallery/cat-snow-sunset.webp" alt="The cat at the window, snowy mountains at sunset outside" width="990" height="678" loading="lazy"><figcaption>Same batch: snowy mountains, sunset</figcaption></figure>
+        <figure><img src="media/gallery/cat-snow-moon.webp" alt="The cat at the window, snowy mountains under a full moon" width="990" height="678" loading="lazy"><figcaption>Same batch: snowy mountains, full moon</figcaption></figure>
+        <figure><img src="media/gallery/cat-21.webp" alt="The cat on the windowsill at night, a lit city skyline outside" width="990" height="678" loading="lazy"><figcaption>From a pencil sketch, through a Scribble control layer</figcaption></figure>
+        <figure><img src="media/gallery/cat-22.webp" alt="The cat at the window, a desert with two moons outside" width="990" height="678" loading="lazy"><figcaption><code>__outside__</code> wildcard: a desert with two moons</figcaption></figure>
+        <figure><img src="media/gallery/cat-30.webp" alt="The cat on the windowsill by a lamp, a glowing city skyline outside" width="990" height="678" loading="lazy"><figcaption>After Enhance: the local model rewrote the prompt</figcaption></figure>
+        <figure><img src="media/gallery/cat-33.webp" alt="Close-up of the cat with green eyes at a rainy train window, a lit platform outside" width="990" height="678" loading="lazy"><figcaption>Variations, one of a batch of four</figcaption></figure>
+        <figure><img src="media/gallery/cat-40.webp" alt="The cat by a table lamp in a red compartment, painted in watercolor" width="990" height="678" loading="lazy"><figcaption>Watercolor LoRA, picked in the LoRA Browser</figcaption></figure>
+        <figure><img src="media/gallery/cat-42.webp" alt="The cat seen from behind beside a lamp, city bokeh outside the window" width="990" height="678" loading="lazy"><figcaption>An artist tag found in AnimaDex</figcaption></figure>
+        <figure><img src="media/gallery/cat-50.webp" alt="The cat on a suitcase between two lanterns in a wooden carriage" width="990" height="678" loading="lazy"><figcaption>Prompt batch, one of 18 from three Loop Generate rounds</figcaption></figure>
+        <figure><img src="media/gallery/cat-60.webp" alt="The cat in the doorway of a train under a full moon, a castle with spires behind" width="990" height="678" loading="lazy"><figcaption>Found again by searching the history for "spires"</figcaption></figure>
+        <figure><img src="media/gallery/cat-62.webp" alt="The cat sitting in a train doorway, warm light behind" width="990" height="678" loading="lazy"><figcaption>DLSS5 Enhance Selection on fur and face</figcaption></figure>
       </div>
     </div>
   </section>
@@ -862,6 +1002,10 @@ footer a:hover { color: var(--ink); }
         <h2>If upstream runs on your machine, this fork does too.</h2>
         <p>Same ComfyUI server, same hardware needs, same setup guide. The fork replaces the plugin folder and nothing else.</p>
       </div>
+      <figure class="media wide">
+        <video src="media/motion-pipeline.mp4" poster="media/motion-pipeline.webp" width="1280" height="720" muted loop playsinline controls preload="none" aria-label="Animation: Krita sends a prompt to a local Ollama model and gets an enhanced prompt back, then sends a batch of four to ComfyUI, and the four images travel back into the history"></video>
+        <figcaption>How the pieces talk: Krita, a local Ollama model for prompts, and ComfyUI on your GPU.</figcaption>
+      </figure>
       <div class="req">
         <div><span class="overline">Krita</span><b>5.2 or later</b><span>Windows, macOS or Linux.</span></div>
         <div><span class="overline">Backend</span><b>ComfyUI</b><span>Local, on your network, or the managed install from upstream's setup.</span></div>
@@ -1127,5 +1271,45 @@ footer a:hover { color: var(--ink); }
     }), { threshold: 0.4 });
     clips.forEach(v => { v.controls = false; seen.observe(v); });
   }
+
+  // Blocks rise in one after another within their group; the HTML already holds the final state
+  if (!still.matches && "IntersectionObserver" in window) {
+    const blocks = document.querySelectorAll(".sec-head:not(.wall-band .sec-head), .split, .media.wide, .media.portrait, .glance > div, .stats > div, .clips figure, .gallery figure, .br, .req > div, .steps li, .faq details, .cta > div");
+    document.documentElement.classList.add("rv-on");
+    const rise = new IntersectionObserver(entries => entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const el = en.target;
+      el.style.transitionDelay = Math.min([...el.parentNode.children].indexOf(el), 5) * 70 + "ms";
+      el.classList.add("in");
+      rise.unobserve(el);
+    }), { rootMargin: "0px 0px -10% 0px" });
+    blocks.forEach(el => { el.classList.add("rv"); rise.observe(el); });
+
+    // Numbers count up from zero once, easing out over 1.4 s
+    const tally = new IntersectionObserver(entries => entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const el = en.target, goal = +el.dataset.count, t0 = performance.now();
+      tally.unobserve(el);
+      (function step(t) {
+        const f = Math.min(1, (t - t0) / 1400);
+        el.textContent = Math.round(goal * (1 - Math.pow(1 - f, 3)));
+        if (f < 1) requestAnimationFrame(step);
+      })(t0);
+    }), { threshold: 0.6 });
+    document.querySelectorAll("[data-count]").forEach(el => tally.observe(el));
+  }
+
+  // The full tour is a YouTube facade: nothing is requested from YouTube before the click
+  const tour = document.querySelector(".tour");
+  const id = tour.dataset.youtube;
+  if (!id) tour.hidden = true;
+  else tour.querySelector(".tour-play").addEventListener("click", e => {
+    const f = document.createElement("iframe");
+    f.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) + "?autoplay=1&rel=0";
+    f.title = "Krita AI Reloaded, full tour";
+    f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+    f.allowFullscreen = true;
+    e.currentTarget.replaceWith(f);
+  });
 })();
 </script>
