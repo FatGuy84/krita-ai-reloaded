@@ -795,7 +795,7 @@ footer a:hover { color: var(--ink); }
         <h2>New since the last tour, recorded in Krita.</h2>
         <p>Each clip is cut from the same night-train session as the video. Nothing is mocked up.</p>
       </div>
-      <div class="tour" data-youtube="">
+      <div class="tour" data-youtube="RjvoxIelwmA">
         <div class="tour-frame">
           <button type="button" class="tour-play" aria-label="Play the full tour, 8 minutes, from YouTube">
             <img src="media/tour-poster.webp" alt="" width="1280" height="720">
@@ -1323,6 +1323,7 @@ footer a:hover { color: var(--ink); }
     f.title = "Krita AI Reloaded, full tour";
     f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
     f.allowFullscreen = true;
+    f.referrerPolicy = "strict-origin-when-cross-origin";
     e.currentTarget.replaceWith(f);
   });
 })();
