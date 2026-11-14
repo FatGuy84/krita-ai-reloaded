@@ -822,10 +822,13 @@ text-to-image is unaffected.
 2. If the official Krita AI Diffusion plugin is installed, remove it first: both
    use the folder `pykrita/ai_diffusion`. Your settings and server stay as they are.
 3. In Krita: *Tools ▸ Scripts ▸ Import Python Plugin from File…*, pick the zip,
-   confirm, and restart Krita.
-4. Enable the plugin under *Settings ▸ Configure Krita ▸ Python Plugin Manager*
-   if it is not already, then open the docker via *Settings ▸ Dockers ▸ AI Image
-   Generation*.
+   and answer *Yes* when asked to enable it.
+4. Quit Krita completely (*File ▸ Quit*) and start it again — plugins are only
+   picked up at startup.
+5. Open the docker via *Settings ▸ Dockers ▸ AI Image Generation*. Krita does not
+   show new dockers on its own. If it is missing from that menu, check that
+   *AI Image Diffusion* is ticked under *Settings ▸ Configure Krita ▸ Python
+   Plugin Manager*.
 
 Everything else (server setup, models) is the same as upstream — see the
 [Plugin Installation Guide](https://docs.interstice.cloud/installation).
