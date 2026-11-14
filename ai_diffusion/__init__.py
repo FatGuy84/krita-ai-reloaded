@@ -9,7 +9,7 @@ if not importlib.util.find_spec(".websockets.src", "ai_diffusion"):
         "Could not find websockets module. This indicates that it was not installed with the"
         " plugin. Please make sure to download a plugin release package (NOT just the source!). You"
         " can find the latest release package here:"
-        " https://github.com/Acly/krita-ai-diffusion/releases"
+        " https://github.com/FatGuy84/krita-ai-reloaded/releases"
     )
 
 # The following imports depend on the code running inside Krita

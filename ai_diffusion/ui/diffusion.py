@@ -240,7 +240,7 @@ class WelcomeWidget(QWidget):
 
         info = QLabel(
             "<a href='https://www.interstice.cloud'>Interstice.cloud</a> | "
-            + "<a href='https://github.com/Acly/krita-ai-diffusion'>GitHub Project</a> | "
+            + "<a href='https://github.com/FatGuy84/krita-ai-reloaded'>GitHub Project</a> | "
             + "<a href='https://discord.gg/pWyzHfHHhU'>Discord</a>",
             self,
         )

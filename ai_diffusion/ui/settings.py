@@ -1299,14 +1299,15 @@ class AboutSettings(SettingsTab):
 
 
 _links_text = """
-<a href='https://www.interstice.cloud'>Website</a><br><br>
+<a href='https://fatguy84.github.io/krita-ai-reloaded/'>Krita AI Reloaded</a><br><br>
 <a href='https://docs.interstice.cloud'>Handbook: Guides and Tips</a><br><br>
-<a href='https://github.com/Acly/krita-ai-diffusion'>GitHub</a>
+<a href='https://github.com/FatGuy84/krita-ai-reloaded'>GitHub</a><br><br>
+<a href='https://github.com/Acly/krita-ai-diffusion'>Original plugin by Acly</a>
 """
 
 _contact_text = """
-<a href='https://github.com/Acly/krita-ai-diffusion/issues'>Issues</a><br><br>
-<a href='https://github.com/Acly/krita-ai-diffusion/discussions'>Discussions</a><br><br>
+<a href='https://github.com/FatGuy84/krita-ai-reloaded/issues'>Issues</a><br><br>
+<a href='https://github.com/FatGuy84/krita-ai-reloaded/discussions'>Discussions</a><br><br>
 <a href='https://discord.gg/pWyzHfHHhU'>Discord</a>
 """
 
