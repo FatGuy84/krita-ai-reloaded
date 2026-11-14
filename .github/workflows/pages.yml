@@ -7,20 +7,38 @@ on:
       - "site/**"
       - "ai_diffusion/icons/logo-128.png"
       - ".github/workflows/pages.yml"
+  # The page shows the latest release's tag and date, filled in at deploy time
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  # A release run sits on the tag, which the github-pages environment does not allow to
+  # deploy. Start a regular run on the branch instead (GITHUB_TOKEN may dispatch workflows).
+  redeploy:
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref ux/improvements
+
+  deploy:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
