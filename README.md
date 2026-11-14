@@ -813,11 +813,25 @@ text-to-image is unaffected.
 
 ## Installation
 
-Same as upstream — see the [Plugin Installation Guide](https://docs.interstice.cloud/installation).
-To use this fork instead of the official release, clone this repository and
-link/copy the `ai_diffusion` folder into Krita's `pykrita` directory
-(the bundled `websockets` library must be added from an official release
-package, it is not part of the repository).
+1. Download `krita_ai_reloaded-<version>.zip` from the **Assets** of the
+   [latest release](https://github.com/FatGuy84/krita-ai-reloaded/releases/latest).
+   Do **not** use GitHub's *Source code (zip)* — it is the repository, not the
+   plugin, and lacks the bundled `websockets` library.
+2. If the official Krita AI Diffusion plugin is installed, remove it first: both
+   use the folder `pykrita/ai_diffusion`. Your settings and server stay as they are.
+3. In Krita: *Tools ▸ Scripts ▸ Import Python Plugin from File…*, pick the zip,
+   confirm, and restart Krita.
+4. Enable the plugin under *Settings ▸ Configure Krita ▸ Python Plugin Manager*
+   if it is not already, then open the docker via *Settings ▸ Dockers ▸ AI Image
+   Generation*.
+
+Everything else (server setup, models) is the same as upstream — see the
+[Plugin Installation Guide](https://docs.interstice.cloud/installation).
+
+To run from a clone instead, link or copy the `ai_diffusion` folder into Krita's
+`pykrita` directory and add `ai_diffusion/websockets` from a release zip (it is
+not part of the repository). `python scripts/package_reloaded.py <tag>` builds
+the release zip.
 
 Some features require additional software:
 * LoRA Browser metadata: [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager)
