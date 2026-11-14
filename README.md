@@ -6,6 +6,7 @@
 </h1>
 
 <p>
+  <a href="https://fatguy84.github.io/krita-ai-reloaded/"><img alt="Website" src="https://img.shields.io/badge/website-fatguy84.github.io-17120C?style=for-the-badge&labelColor=241C13&color=FFB020"></a>
   <a href="https://github.com/Acly/krita-ai-diffusion"><img alt="Based on upstream v1.53.0" src="https://img.shields.io/badge/upstream-v1.53.0-17120C?style=for-the-badge&labelColor=241C13&color=FFB020"></a>
   <a href="LICENSE"><img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-17120C?style=for-the-badge&labelColor=241C13&color=FF7A1A"></a>
   <a href="https://ko-fi.com/fatguy84"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/support-Ko--fi-17120C?style=for-the-badge&labelColor=241C13&color=FFC24D"></a>
@@ -17,7 +18,8 @@
 A usability-focused fork of the [Krita AI Diffusion plugin](https://github.com/Acly/krita-ai-diffusion)
 with numerous quality-of-life improvements for prompt handling, LoRA management
 and batch generation workflows.
-Feature videos and a full tour are on the
+The [website](https://fatguy84.github.io/krita-ai-reloaded/) shows every feature
+in short clips; feature videos and a full tour are on the
 [YouTube channel](https://www.youtube.com/@KritaAIReloaded).
 
 <p>
