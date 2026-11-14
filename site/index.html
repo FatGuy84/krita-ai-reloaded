@@ -1014,7 +1014,7 @@ footer a:hover { color: var(--ink); }
       </div>
       <ol class="steps">
         <li><b>Set up the plugin once</b><p>Follow upstream's installation guide to get Krita and ComfyUI talking. Skip this if you already use Krita AI Diffusion.</p></li>
-        <li><b>Replace the plugin folder</b><p>Download the latest release and put its <code>ai_diffusion</code> folder in Krita's <code>pykrita</code> directory, replacing the old one. Krita opens it under Settings › Manage Resources › Open Resource Folder.</p><span class="path">Windows: %APPDATA%\krita\pykrita</span><span class="path">macOS: ~/Library/Application Support/krita/pykrita</span><span class="path">Linux: ~/.local/share/krita/pykrita</span></li>
+        <li><b>Import the plugin zip</b><p>From the latest release, download <code>krita_ai_reloaded-….zip</code> under Assets, not “Source code”. If upstream's plugin is installed, delete its <code>ai_diffusion</code> folder in <code>pykrita</code> first. Then in Krita: Tools › Scripts › Import Python Plugin from File, and pick the zip.</p><span class="path">Windows: %APPDATA%\krita\pykrita</span><span class="path">macOS: ~/Library/Application Support/krita/pykrita</span><span class="path">Linux: ~/.local/share/krita/pykrita</span></li>
         <li><b>Restart Krita</b><p>The docker looks the same. The new buttons are next to the prompt, Generate and the batch count.</p></li>
       </ol>
       <div class="optional">
@@ -1058,7 +1058,7 @@ footer a:hover { color: var(--ink); }
         <div>
           <p class="overline">Download</p>
           <h3>Get the latest release.</h3>
-          <p><span data-release="tag">v1.53.0-reloaded.4</span>, based on upstream <span data-release="upstream">v1.53.0</span>. Replace the <code>ai_diffusion</code> folder and restart Krita.</p>
+          <p><span data-release="tag">v1.53.0-reloaded.4</span>, based on upstream <span data-release="upstream">v1.53.0</span>. Import the plugin zip from the release assets and restart Krita.</p>
           <div class="btns">
             <a class="btn btn-amber btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded/releases/latest">Download</a>
             <a class="btn btn-lg" href="https://github.com/FatGuy84/krita-ai-reloaded#readme">Read the full README</a>
