@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import html
 import re
+import tempfile
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, QObject, QPoint, Qt
-from PyQt5.QtGui import QPixmap, QTextCursor
+from PyQt5.QtCore import QEvent, QObject, Qt, QUrl
+from PyQt5.QtGui import QCursor, QPixmap, QTextCursor
 from PyQt5.QtWidgets import (
     QDoubleSpinBox,
     QGridLayout,
@@ -15,6 +18,7 @@ from PyQt5.QtWidgets import (
     QPlainTextEdit,
     QSlider,
     QToolButton,
+    QToolTip,
     QVBoxLayout,
     QWidget,
     QWidgetAction,
@@ -34,7 +38,7 @@ from ..text import (
     remove_trigger_group,
     str_index_to_char16_index,
 )
-from ..util import ensure, trim_text
+from ..util import trim_text
 from . import theme
 from .lora_picker import _extract_video_frame, _is_video_url
 
@@ -169,81 +173,65 @@ def _known_loras() -> tuple[dict[str, list[str]], dict[str, str]]:
     return triggers, previews
 
 
-_preview_pixmaps: dict[str, QPixmap | None] = {}  # url -> scaled preview, None = failed
+# url -> preview saved as a small png, None while loading or when it failed
+_preview_files: dict[str, str | None] = {}
+_preview_dir = Path(tempfile.gettempdir()) / "krita_ai_lora_previews"
 
 
-class _PreviewHover(QObject):
-    """Shows the LoRA's preview image next to its name while the mouse is over it."""
+def _tooltip_html(text: str, url: str | None):
+    body = html.escape(text).replace("\n", "<br>")
+    if url and (file := _preview_files.get(url)):
+        src = QUrl.fromLocalFile(file).toString()
+        return f'<img src="{src}"><br>{body}'
+    return f"<p style='white-space:pre'>{body}</p>"
 
-    def __init__(self, label: QLabel, url: str):
+
+class _PreviewTooltip(QObject):
+    """Puts the LoRA's preview image into the tooltip of its name. Uses the regular
+    tooltip so there is no extra window; the image is fetched on first hover."""
+
+    def __init__(self, label: QLabel, text: str, url: str):
         super().__init__(label)
         self._label = label
+        self._text = text
         self._url = url
-        self._hovered = False
-        self._popup: QLabel | None = None
-        label.installEventFilter(self)
+        label.setToolTip(_tooltip_html(text, url))
+        if url not in _preview_files:
+            label.installEventFilter(self)
 
     def eventFilter(self, a0, a1):
         if a1 is not None and a1.type() == QEvent.Type.Enter:
-            self._hovered = True
-            if self._url in _preview_pixmaps:
-                self._show()
-            else:
-                _preview_pixmaps[self._url] = None  # one fetch at a time
+            self._label.removeEventFilter(self)
+            if self._url not in _preview_files:
+                _preview_files[self._url] = None
                 eventloop.run(self._fetch())
-        elif a1 is not None and a1.type() in (QEvent.Type.Leave, QEvent.Type.Hide):
-            self._hovered = False
-            self._hide()
         return False
 
     async def _fetch(self):
-        pixmap = None
         if client := root.connection.client_if_connected:
             data = await fetch_preview_bytes(client._requests, self._url)
             if data and _is_video_url(self._url):
                 loop = asyncio.get_running_loop()
                 data = await loop.run_in_executor(None, _extract_video_frame, data)
-            if data:
-                pixmap = QPixmap()
-                pixmap.loadFromData(data)
-                if pixmap.isNull():
-                    pixmap = None
-                else:
-                    pixmap = pixmap.scaled(
-                        _preview_size,
-                        _preview_size,
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
-        _preview_pixmaps[self._url] = pixmap
+            pixmap = QPixmap()
+            if data and pixmap.loadFromData(data):
+                pixmap = pixmap.scaled(
+                    _preview_size,
+                    _preview_size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                _preview_dir.mkdir(parents=True, exist_ok=True)
+                name = hashlib.md5(self._url.encode()).hexdigest() + ".png"
+                if pixmap.save(str(_preview_dir / name), "PNG"):
+                    _preview_files[self._url] = str(_preview_dir / name)
         try:
-            if self._hovered:
-                self._show()
+            label = self._label
+            label.setToolTip(_tooltip_html(self._text, self._url))
+            if label.isVisible() and label.underMouse():
+                QToolTip.showText(QCursor.pos(), label.toolTip(), label)
         except RuntimeError:
             pass  # popup closed before the fetch finished
-
-    def _show(self):
-        pixmap = _preview_pixmaps.get(self._url)
-        if pixmap is None:
-            return
-        popup = self._popup
-        if popup is None:
-            popup = self._popup = QLabel(self._label, Qt.WindowType.ToolTip)
-            popup.setStyleSheet(f"border: 1px solid {theme.line}; background: black;")
-            popup.setPixmap(pixmap)
-            popup.adjustSize()
-        # beside the menu, so it covers neither the rows nor the prompt
-        menu = ensure(self._label.window())
-        y = self._label.mapToGlobal(QPoint(0, 0)).y() - popup.height() // 2
-        x = menu.mapToGlobal(QPoint(0, 0)).x() - popup.width() - 4
-        if x < 0:
-            x = menu.mapToGlobal(QPoint(menu.width(), 0)).x() + 4
-        popup.move(x, max(0, y))
-        popup.show()
-
-    def _hide(self):
-        if self._popup is not None:
-            self._popup.hide()
 
 
 class LoraStrengthPopup(QMenu):
@@ -301,9 +289,11 @@ class LoraStrengthPopup(QMenu):
         row = 2 * index  # the row below holds the trigger groups
         close = lora_block_end(text, match)
         name = QLabel(trim_text(Path(match[1].replace("\\", "/")).stem, 40), parent)
-        name.setToolTip(match[0] if close is None else text[match.start() : close] + lora_end)
+        tip = match[0] if close is None else text[match.start() : close] + lora_end
         if preview:
-            _PreviewHover(name, preview)
+            _PreviewTooltip(name, tip, preview)
+        else:
+            name.setToolTip(tip)
         layout.addWidget(name, row, 0)
 
         remove = QToolButton(parent)
