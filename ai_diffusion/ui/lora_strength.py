@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QTextCursor
+from PyQt5.QtCore import QEvent, QObject, QPoint, Qt
+from PyQt5.QtGui import QPixmap, QTextCursor
 from PyQt5.QtWidgets import (
     QDoubleSpinBox,
     QGridLayout,
@@ -19,7 +20,8 @@ from PyQt5.QtWidgets import (
     QWidgetAction,
 )
 
-from ..backend.lora_manager import load_cached_loras
+from .. import eventloop
+from ..backend.lora_manager import fetch_preview_bytes, load_cached_loras
 from ..localization import translate as _
 from ..model.root import root
 from ..settings import settings
@@ -32,10 +34,12 @@ from ..text import (
     remove_trigger_group,
     str_index_to_char16_index,
 )
-from ..util import trim_text
+from ..util import ensure, trim_text
 from . import theme
+from .lora_picker import _extract_video_frame, _is_video_url
 
 _min_strength, _max_strength = -2.0, 3.0
+_preview_size = 256
 _slider_scale = 100  # slider works in hundredths
 _chips_per_row = 4
 
@@ -145,18 +149,101 @@ def wrap_lora(text: str, index: int, groups: list[str]):
     return masked
 
 
-def _known_triggers() -> dict[str, list[str]]:
-    """Trigger groups per LoRA, from the Lora Manager list the LoRA browser caches, else
-    the trigger words set for the file in the style editor."""
-    result: dict[str, list[str]] = {}
+def _known_loras() -> tuple[dict[str, list[str]], dict[str, str]]:
+    """Trigger groups and preview urls per LoRA. Triggers come from the Lora Manager list
+    the LoRA browser caches, else the trigger words set for the file in the style editor.
+    An expired cache still counts: trigger words rarely change, and the popup must not
+    lose them just because the browser was not opened for a few hours."""
+    triggers: dict[str, list[str]] = {}
+    previews: dict[str, str] = {}
     for file in root.files.loras:
-        if triggers := file.meta("lora_triggers", ""):
-            result[lora_key(file.id)] = [triggers]
+        if words := file.meta("lora_triggers", ""):
+            triggers[lora_key(file.id)] = [words]
     if client := root.connection.client_if_connected:
-        for lora in load_cached_loras(client.url) or []:
+        for lora in load_cached_loras(client.url, any_age=True) or []:
+            key = lora_key(lora.name)
             if groups := [g.strip() for g in lora.trigger_words if g.strip()]:
-                result[lora_key(lora.name)] = groups
-    return result
+                triggers[key] = groups
+            if lora.preview_url:
+                previews[key] = lora.preview_url
+    return triggers, previews
+
+
+_preview_pixmaps: dict[str, QPixmap | None] = {}  # url -> scaled preview, None = failed
+
+
+class _PreviewHover(QObject):
+    """Shows the LoRA's preview image next to its name while the mouse is over it."""
+
+    def __init__(self, label: QLabel, url: str):
+        super().__init__(label)
+        self._label = label
+        self._url = url
+        self._hovered = False
+        self._popup: QLabel | None = None
+        label.installEventFilter(self)
+
+    def eventFilter(self, a0, a1):
+        if a1 is not None and a1.type() == QEvent.Type.Enter:
+            self._hovered = True
+            if self._url in _preview_pixmaps:
+                self._show()
+            else:
+                _preview_pixmaps[self._url] = None  # one fetch at a time
+                eventloop.run(self._fetch())
+        elif a1 is not None and a1.type() in (QEvent.Type.Leave, QEvent.Type.Hide):
+            self._hovered = False
+            self._hide()
+        return False
+
+    async def _fetch(self):
+        pixmap = None
+        if client := root.connection.client_if_connected:
+            data = await fetch_preview_bytes(client._requests, self._url)
+            if data and _is_video_url(self._url):
+                loop = asyncio.get_running_loop()
+                data = await loop.run_in_executor(None, _extract_video_frame, data)
+            if data:
+                pixmap = QPixmap()
+                pixmap.loadFromData(data)
+                if pixmap.isNull():
+                    pixmap = None
+                else:
+                    pixmap = pixmap.scaled(
+                        _preview_size,
+                        _preview_size,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+        _preview_pixmaps[self._url] = pixmap
+        try:
+            if self._hovered:
+                self._show()
+        except RuntimeError:
+            pass  # popup closed before the fetch finished
+
+    def _show(self):
+        pixmap = _preview_pixmaps.get(self._url)
+        if pixmap is None:
+            return
+        popup = self._popup
+        if popup is None:
+            popup = self._popup = QLabel(self._label, Qt.WindowType.ToolTip)
+            popup.setStyleSheet(f"border: 1px solid {theme.line}; background: black;")
+            popup.setPixmap(pixmap)
+            popup.adjustSize()
+        # beside the menu, so it covers neither the rows nor the prompt
+        menu = ensure(self._label.window())
+        y = self._label.mapToGlobal(QPoint(0, 0)).y() - popup.height() // 2
+        x = menu.mapToGlobal(QPoint(0, 0)).x() - popup.width() - 4
+        if x < 0:
+            x = menu.mapToGlobal(QPoint(menu.width(), 0)).x() + 4
+        popup.move(x, max(0, y))
+        popup.show()
+
+    def _hide(self):
+        if self._popup is not None:
+            self._popup.hide()
 
 
 class LoraStrengthPopup(QMenu):
@@ -190,25 +277,33 @@ class LoraStrengthPopup(QMenu):
         layout.setColumnMinimumWidth(1, 160)
         text = self._prompt.toPlainText()
         matches = list(pattern_lora.finditer(text))
-        triggers = _known_triggers() if matches else {}
+        triggers, previews = _known_loras() if matches else ({}, {})
         if not matches:
             empty = QLabel(_("No LoRAs in the prompt"), content)
             empty.setStyleSheet(f"font-style: italic; color: {theme.grey};")
             layout.addWidget(empty, 0, 0)
         for index, match in enumerate(matches):
-            groups = triggers.get(lora_key(match[1]), [])
-            self._add_row(layout, index, match, text, groups)
+            key = lora_key(match[1])
+            self._add_row(layout, index, match, text, triggers.get(key, []), previews.get(key))
         self._container_layout.addWidget(content)
         self._content = content
 
     def _add_row(
-        self, layout: QGridLayout, index: int, match: re.Match[str], text: str, groups: list[str]
+        self,
+        layout: QGridLayout,
+        index: int,
+        match: re.Match[str],
+        text: str,
+        groups: list[str],
+        preview: str | None,
     ):
         parent = layout.parentWidget()
         row = 2 * index  # the row below holds the trigger groups
         close = lora_block_end(text, match)
         name = QLabel(trim_text(Path(match[1].replace("\\", "/")).stem, 40), parent)
         name.setToolTip(match[0] if close is None else text[match.start() : close] + lora_end)
+        if preview:
+            _PreviewHover(name, preview)
         layout.addWidget(name, row, 0)
 
         remove = QToolButton(parent)

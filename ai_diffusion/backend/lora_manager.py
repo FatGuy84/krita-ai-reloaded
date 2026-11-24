@@ -135,11 +135,13 @@ def _cache_path(base_url: str) -> Path:
     return util.user_data_dir / f"lora_manager_cache_{url_hash}.json"
 
 
-def load_cached_loras(base_url: str) -> list[LoraInfo] | None:
-    """Return cached LoRA list if present and not expired, else None."""
+def load_cached_loras(base_url: str, any_age=False) -> list[LoraInfo] | None:
+    """Return cached LoRA list if present and not expired, else None. `any_age` also
+    returns an expired list - fine for metadata lookups (trigger words, previews) that
+    should not vanish just because the browser was not opened for a while."""
     if base_url in _memory_cache:
         timestamp, loras = _memory_cache[base_url]
-        if time.time() - timestamp <= _CACHE_MAX_AGE:
+        if any_age or time.time() - timestamp <= _CACHE_MAX_AGE:
             return list(loras)
         del _memory_cache[base_url]
     path = _cache_path(base_url)
@@ -150,7 +152,7 @@ def load_cached_loras(base_url: str) -> list[LoraInfo] | None:
         if data.get("version") != _CACHE_VERSION:
             return None
         timestamp = data.get("timestamp", 0)
-        if time.time() - timestamp > _CACHE_MAX_AGE:
+        if not any_age and time.time() - timestamp > _CACHE_MAX_AGE:
             return None
         loras = [LoraInfo(**item) for item in data.get("loras", [])]
         _memory_cache[base_url] = (timestamp, loras)
