@@ -230,7 +230,7 @@ class UpscaleWidget(QWidget):
                 bind(model.upscale, "tile_overlap", self.overlap_input, "value"),
                 bind_toggle(model.upscale, "use_prompt", self.use_prompt_switch),
                 bind(model.upscale, "can_generate", self.upscale_button, "enabled", Bind.one_way),
-                bind(model, "error", self.error_box, "error", Bind.one_way),
+                bind(model, "error", self.error_box, "error"),
                 model.upscale.tile_overlap_mode_changed.connect(self._update_overlap),
                 model.upscale.use_prompt_changed.connect(self._update_prompt),
                 model.regions.modified.connect(self._update_prompt),

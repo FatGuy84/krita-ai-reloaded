@@ -255,7 +255,7 @@ class LiveWidget(QWidget):
                 self.seed_input.valueChanged.connect(
                     lambda v: setattr(self._model, "seed", int(v))
                 ),
-                bind(model, "error", self.error_box, "error", Bind.one_way),
+                bind(model, "error", self.error_box, "error"),
                 model.live.is_active_changed.connect(self.update_is_active),
                 model.live.is_recording_changed.connect(self.update_is_recording),
                 model.live.has_result_changed.connect(self.apply_button.setEnabled),

@@ -1179,6 +1179,8 @@ class GenerateButton(QPushButton):
 
 
 class ErrorBox(QFrame):
+    error_changed = pyqtSignal(Error)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._error = no_error
@@ -1205,11 +1207,19 @@ class ErrorBox(QFrame):
         self._recharge_button.setIcon(theme.icon("interstice"))
         self._recharge_button.clicked.connect(self._recharge)
 
+        self._dismiss_button = QToolButton(self)
+        self._dismiss_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self._dismiss_button.setIcon(theme.icon("remove"))
+        self._dismiss_button.setToolTip(_("Dismiss"))
+        self._dismiss_button.setAutoRaise(True)
+        self._dismiss_button.clicked.connect(self._dismiss)
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.addWidget(self._label)
         layout.addWidget(self._copy_button)
         layout.addWidget(self._recharge_button)
+        layout.addWidget(self._dismiss_button, 0, Qt.AlignmentFlag.AlignTop)
 
         self.reset()
 
@@ -1291,6 +1301,11 @@ class ErrorBox(QFrame):
 
     def _recharge(self):
         QDesktopServices.openUrl(QUrl("https://www.interstice.cloud/user"))
+
+    def _dismiss(self):
+        # Clears the model's error too (two-way bind), so the same error can show again later
+        self.error = no_error
+        self.error_changed.emit(no_error)
 
 
 def create_wide_tool_button(icon_name: str, text: str, parent=None):

@@ -1616,7 +1616,7 @@ class GenerationWidget(QWidget):
                 bind(model, "style", self.style_select, "value"),
                 bind(model, "strength", self.strength_slider, "value"),
                 bind(model, "layer_count", self.layer_count_widget, "value"),
-                bind(model, "error", self.error_box, "error", Bind.one_way),
+                bind(model, "error", self.error_box, "error"),
                 bind_toggle(model, "region_only", self.region_mask_button),
                 model.inpaint.mode_changed.connect(self.update_generate_options),
                 model.strength_changed.connect(self.update_generate_options),
