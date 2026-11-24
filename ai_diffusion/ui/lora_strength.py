@@ -7,15 +7,17 @@ import re
 import tempfile
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, QObject, Qt, QUrl
-from PyQt5.QtGui import QCursor, QPixmap, QTextCursor
+from PyQt5.QtCore import QEvent, QObject, Qt, QTimer, QUrl
+from PyQt5.QtGui import QCursor, QGuiApplication, QPixmap, QTextCursor
 from PyQt5.QtWidgets import (
     QDoubleSpinBox,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QMenu,
     QPlainTextEdit,
+    QScrollArea,
     QSlider,
     QToolButton,
     QToolTip,
@@ -38,7 +40,7 @@ from ..text import (
     remove_trigger_group,
     str_index_to_char16_index,
 )
-from ..util import trim_text
+from ..util import ensure, trim_text
 from . import theme
 from .lora_picker import _extract_video_frame, _is_video_url
 
@@ -246,6 +248,14 @@ class LoraStrengthPopup(QMenu):
         self._container = QWidget(self)
         self._container_layout = QVBoxLayout(self._container)
         self._container_layout.setContentsMargins(0, 0, 0, 0)
+        # a menu taller than the screen wraps into columns and leaves an empty one
+        # beside the rows, so long lists scroll instead
+        self._scroll = QScrollArea(self._container)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll.setWidgetResizable(True)
+        ensure(self._scroll.viewport()).setAutoFillBackground(False)
+        self._container_layout.addWidget(self._scroll)
         self._content: QWidget | None = None
         self._last_edited: int | None = None  # dragging one slider is one undo step
         action = QWidgetAction(self)
@@ -255,11 +265,13 @@ class LoraStrengthPopup(QMenu):
 
     def _rebuild(self):
         self._last_edited = None
-        if self._content is not None:
-            self._container_layout.removeWidget(self._content)
-            self._content.hide()
-            self._content.deleteLater()  # may be running the clicked button's signal
-        content = QWidget(self._container)
+        scrollbar = ensure(self._scroll.verticalScrollBar())
+        scrolled = scrollbar.value()  # keep the place when a chip or remove rebuilds
+        if (old := self._scroll.takeWidget()) is not None:
+            old.hide()
+            old.deleteLater()  # may be running the clicked button's signal
+        content = QWidget()
+        content.setAutoFillBackground(False)
         layout = QGridLayout(content)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setColumnMinimumWidth(1, 160)
@@ -273,8 +285,21 @@ class LoraStrengthPopup(QMenu):
         for index, match in enumerate(matches):
             key = lora_key(match[1])
             self._add_row(layout, index, match, text, triggers.get(key, []), previews.get(key))
-        self._container_layout.addWidget(content)
+        self._scroll.setWidget(content)
         self._content = content
+        self._fit_to_screen()
+        QTimer.singleShot(0, lambda: scrollbar.setValue(scrolled))
+
+    def _fit_to_screen(self):
+        if self._content is None:
+            return
+        hint = ensure(self._content.layout()).sizeHint()
+        screen = self._prompt.screen() or QGuiApplication.primaryScreen()
+        max_height = int(ensure(screen).availableGeometry().height() * 0.85)
+        width = hint.width()
+        if hint.height() > max_height:
+            width += ensure(self._scroll.verticalScrollBar()).sizeHint().width()
+        self._scroll.setFixedSize(width, min(hint.height(), max_height))
 
     def _add_row(
         self,
